@@ -1,6 +1,6 @@
 # Agentic Workstation
 
-> **Structured Architectural Scaffolding for AI Development**
+> **AI-Powered Software Implementation with Quality Assurance**
 
 [![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/sujith-eag/agentic-workstation)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -49,6 +49,11 @@ graph TD
 
 ## 🚀 Quick Start
 
+### Prerequisites
+- Python 3.10+
+- A completed planning project (from Agentic Workstation Planning workflow)
+- Basic familiarity with your preferred AI assistant (Claude, GPT-4, etc.)
+
 ### Environment Setup
 Create and activate a Python virtual environment:
 ```bash
@@ -69,12 +74,6 @@ source myproject-env\Scripts\activate
 pip install agentic-workstation
 ```
 
-**Option B: Docker** (Soon to be deployed to Docker Hub)
-```bash
-# Build locally
-docker build -t agentic-workstation .
-alias agentic="docker run -it -v $(pwd):/data agentic-workstation"
-```
 
 ### Uninstallation
 
@@ -83,20 +82,14 @@ alias agentic="docker run -it -v $(pwd):/data agentic-workstation"
 pip uninstall agentic-workstation
 ```
 
-**Option B: Docker**
-```bash
-# Remove the Docker image
-docker rmi agentic-workstation
-
-# Remove any running containers (if any)
-docker rm $(docker ps -aq --filter ancestor=agentic-workstation)
-```
-
 ### 1. Initialize a Project
 Navigate to your empty folder and initialize a project.
 ```bash
-mkdir my-new-saas && cd my-new-saas
-agentic project init MySaaS
+# Create a new directory for your implementation
+mkdir my-app-implementation && cd my-app-implementation
+
+# Initialize with implementation workflow
+agentic project init MyApp --workflow implementation
 ```
 *This creates a project with the default "planning" workflow. Use `--workflow` to specify another workflow.*
 
@@ -138,6 +131,22 @@ The system supports pluggable **Workflow Manifests**.
     *   `E-01 Frontend`: React/Vue/Svelte implementation.
     *   `E-02 Backend`: API & Logic.
     *   `E-03 Database`: Schema & Migrations.
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   INTAKE    │───▶│    SPEC     │───▶│  APPROVED   │
+│             │    │             │    │             │
+│ Task loaded │    │ Mini-spec   │    │ Human OK    │
+└─────────────┘    └─────────────┘    └─────────────┘
+                                                        │
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ▼
+│ TEST_WRITE  │───▶│ IMPLEMENT   │───▶│ INSTRUMENT  │───▶ COMPLETE
+│             │    │             │    │             │
+│ Write tests │    │ Write code  │    │ Add logging │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+**8 stages** ensure systematic progress with quality checkpoints.
 
 ### 3. Custom Workflows
 You can create your own workflows by placing a manifest in:
