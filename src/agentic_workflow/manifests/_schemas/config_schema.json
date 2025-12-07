@@ -1,0 +1,273 @@
+{
+  "app": {
+    "type": "object",
+    "description": "Application-level configuration (config/agentic_workflow.yaml)",
+    "properties": {
+      "version": {
+        "type": "string",
+        "description": "Configuration version",
+        "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      },
+      "logging": {
+        "type": "object",
+        "description": "Logging configuration",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            "default": "INFO"
+          },
+          "format": {
+            "type": "string",
+            "default": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+          },
+          "file": {
+            "type": "string",
+            "description": "Log file path (optional)"
+          }
+        },
+        "additionalProperties": false
+      },
+      "directories": {
+        "type": "object",
+        "description": "Default directory paths",
+        "properties": {
+          "projects": {
+            "type": "string",
+            "description": "Projects directory path",
+            "default": "projects"
+          },
+          "templates": {
+            "type": "string",
+            "description": "Templates directory path",
+            "default": "templates"
+          },
+          "manifests": {
+            "type": "string",
+            "description": "Manifests directory path",
+            "default": "manifests"
+          },
+          "scripts": {
+            "type": "string",
+            "description": "Scripts directory path",
+            "default": "scripts"
+          }
+        },
+        "additionalProperties": false
+      },
+      "governance": {
+        "type": "object",
+        "description": "Global governance settings",
+        "properties": {
+          "strictness": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": ["lenient", "moderate", "strict"],
+                "default": "moderate"
+              }
+            },
+            "additionalProperties": false
+          },
+          "rules": {
+            "type": "object",
+            "description": "Global governance rules",
+            "patternProperties": {
+              "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"},
+                  "description": {"type": "string"},
+                  "context": {
+                    "type": "string",
+                    "enum": ["init", "handoff", "decision", "end"]
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": ["lenient", "moderate", "strict"]
+                  },
+                  "error_message": {"type": "string"},
+                  "fix_suggestion": {"type": "string"},
+                  "enabled": {"type": "boolean", "default": true}
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "workflows": {
+        "type": "object",
+        "description": "Workflow type configurations",
+        "patternProperties": {
+          "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+            "type": "object",
+            "properties": {
+              "description": {"type": "string"},
+              "enabled": {"type": "boolean", "default": true},
+              "default_agents": {
+                "type": "array",
+                "items": {"type": "string"}
+              },
+              "required_artifacts": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "additionalProperties": false
+  },
+  "project": {
+    "type": "object",
+    "description": "Project-specific configuration (config.yaml)",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Project name",
+        "minLength": 1
+      },
+      "workflow_type": {
+        "type": "string",
+        "description": "Workflow type (planning, implementation, etc.)",
+        "enum": ["planning", "implementation", "research", "workflow-creation"]
+      },
+      "version": {
+        "type": "string",
+        "description": "Project version",
+        "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      },
+      "description": {
+        "type": "string",
+        "description": "Project description"
+      },
+      "created_at": {
+        "type": "string",
+        "description": "Project creation timestamp",
+        "format": "date-time"
+      },
+      "directories": {
+        "type": "object",
+        "description": "Project directory overrides",
+        "properties": {
+          "agent_files": {"type": "string", "default": "agent_files"},
+          "agent_context": {"type": "string", "default": "agent_context"},
+          "agent_log": {"type": "string", "default": "agent_log"},
+          "artifacts": {"type": "string", "default": "artifacts"},
+          "docs": {"type": "string", "default": "docs"},
+          "input": {"type": "string", "default": "input"},
+          "package": {"type": "string", "default": "package"},
+          "scripts": {"type": "string", "default": "scripts"}
+        },
+        "additionalProperties": false
+      },
+      "workflow": {
+        "type": "object",
+        "description": "Workflow file configurations",
+        "properties": {
+          "workflow_file": {"type": "string", "default": "workflow.json"},
+          "agents_file": {"type": "string", "default": "agents.json"},
+          "artifacts_file": {"type": "string", "default": "artifacts.json"},
+          "instructions_file": {"type": "string", "default": "instructions.json"},
+          "governance_file": {"type": "string", "default": "governance.md"}
+        },
+        "additionalProperties": false
+      },
+      "governance": {
+        "type": "object",
+        "description": "Project-specific governance settings",
+        "properties": {
+          "strictness": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": ["lenient", "moderate", "strict"],
+                "default": "moderate"
+              }
+            },
+            "additionalProperties": false
+          },
+          "rules": {
+            "type": "object",
+            "description": "Project-specific governance rules",
+            "patternProperties": {
+              "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"},
+                  "description": {"type": "string"},
+                  "context": {
+                    "type": "string",
+                    "enum": ["init", "handoff", "decision", "end"]
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": ["lenient", "moderate", "strict"]
+                  },
+                  "error_message": {"type": "string"},
+                  "fix_suggestion": {"type": "string"},
+                  "enabled": {"type": "boolean", "default": true}
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "agents": {
+        "type": "object",
+        "description": "Agent-specific configurations",
+        "patternProperties": {
+          "^[A-Z][0-9][0-9]$": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "description": {"type": "string"},
+              "enabled": {"type": "boolean", "default": true},
+              "max_iterations": {"type": "integer", "minimum": 1},
+              "timeout_minutes": {"type": "integer", "minimum": 1},
+              "required_artifacts": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "scripts": {
+        "type": "object",
+        "description": "Script path configurations",
+        "properties": {
+          "workflow_cli": {"type": "string"},
+          "project_cli": {"type": "string"},
+          "validation_script": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "environment": {
+        "type": "object",
+        "description": "Environment-specific settings",
+        "properties": {
+          "variables": {
+            "type": "object",
+            "description": "Environment variables",
+            "patternProperties": {
+              "^[A-Z_][A-Z0-9_]*$": {"type": "string"}
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "required": ["name", "workflow_type"],
+    "additionalProperties": false
+  }
+}

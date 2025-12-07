@@ -1,0 +1,50 @@
+{#- Governance Footer Partial -#}
+{#- Displays governance rules, domain constraints, and bypass policies -#}
+{#- Note: This partial shows ONLY governance/enforcement info, not domain rules or boundaries -#}
+{#- Domain rules and boundaries are shown in the main body to avoid duplication -#}
+
+{#- Parameters:
+    governance: dict with keys: base_rules, workflow_rules
+    enforcement: dict with keys: mode, checkpoint_gating, handoff_gating
+-#}
+
+{% if governance or enforcement %}
+---
+
+## Governance & Enforcement
+
+{% if governance.base_rules %}
+### Base Rules
+
+{% for rule in governance.base_rules %}
+- {{ rule }}
+{% endfor %}
+{% endif %}
+
+{% if governance.workflow_rules %}
+### Workflow Rules
+
+{% for rule in governance.workflow_rules %}
+- {{ rule }}
+{% endfor %}
+{% endif %}
+
+{% if enforcement %}
+### Enforcement Mode
+
+| Setting | Value |
+|---------|-------|
+| **Mode** | {{ enforcement.mode | default('strict') | upper }} |
+| **Checkpoint Gating** | {{ enforcement.checkpoint_gating | default('strict') }} |
+| **Handoff Gating** | {{ enforcement.handoff_gating | default('strict') }} |
+
+{% set mode = enforcement.mode | default('strict') %}
+{% if mode == 'strict' %}
+> ⚠️ **Strict mode:** All validations enforced. Handoffs blocked until requirements met.
+{% elif mode == 'lenient' %}
+> ℹ️ **Lenient mode:** Warnings shown but not blocking. Review carefully.
+{% else %}
+> ⚡ **No enforcement:** All checks disabled.
+{% endif %}
+{% endif %}
+{% endif %}

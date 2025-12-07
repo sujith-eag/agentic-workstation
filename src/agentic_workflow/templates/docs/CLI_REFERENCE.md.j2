@@ -1,0 +1,132 @@
+# CLI Reference
+
+> Self-contained CLI reference for this project workspace.
+
+## Quick Start (Recommended)
+
+From within this project folder, use the **local workflow wrapper**:
+
+```bash
+./workflow <command> [args...]
+```
+
+The project name is auto-detected — no need to specify it.
+
+### Examples
+
+```bash
+./workflow status                    # Show project status
+./workflow activate A01              # Activate agent A01
+./workflow handoff --from A01 --to A02 --artifacts "spec.md"
+./workflow decision --title "Use PostgreSQL" --rationale "ACID compliance"
+```
+
+---
+
+## Alternative: Root CLI
+
+You can also run commands from the **repo root**:
+
+```bash
+cd /path/to/agentic-workflow-os
+python3 -m scripts.cli.workflow <command> {{ project_name }} [args]
+```
+
+---
+
+## Session Commands
+
+| Command | Syntax | Description |
+|---------|--------|-------------|
+| **init** | `init` | Initialize project directory structure |
+| **activate** | `activate <agent_id>` | Activate agent session (accepts: A01, A1, 01, 1) |
+| **end** | `end` | Archive session and reset to Orchestrator |
+| **populate** | `populate` | Populate agent frontmatter from manifest |
+
+## Entry Commands (exchange_log)
+
+| Command | Syntax | Description |
+|---------|--------|-------------|
+| **handoff** | `handoff --from <id> --to <id> [--artifacts <csv>] [--notes <text>]` | Write handoff with auto-generated ID |
+| **feedback** | `feedback --target <id> --severity <level> --summary <text>` | Write feedback ticket |
+| **iteration** | `iteration --trigger <text> --agents <csv>` | Write iteration cycle |
+
+## Entry Commands (context_log)
+
+| Command | Syntax | Description |
+|---------|--------|-------------|
+| **session** | `session --agent <id> --role <name>` | Write session entry |
+| **decision** | `decision --title <text> --rationale <text> [--agent <id>]` | Write decision entry |
+| **assumption** | `assumption --text <text> [--rationale <text>]` | Write assumption entry |
+| **blocker** | `blocker --title <text> --description <text>` | Write blocker entry |
+
+## Query Commands
+
+| Command | Syntax | Description |
+|---------|--------|-------------|
+| **status** | `status` | Show project status summary |
+| **check-handoff** | `check-handoff <id>` | Check if handoff exists |
+| **list-pending** | `list-pending` | List pending handoffs |
+| **list-blockers** | `list-blockers` | List active blockers |
+
+---
+
+## Auto-Generated Entry IDs
+
+Entry IDs are auto-generated based on existing entries:
+
+- Handoffs: `HO-001`, `HO-002`, ...
+- Feedback: `FB-001`, `FB-002`, ...
+- Iterations: `ITER-001`, `ITER-002`, ...
+- Sessions: `SESS-001`, `SESS-002`, ...
+- Decisions: `DEC-001`, `DEC-002`, ...
+- Assumptions: `ASSUMP-001`, `ASSUMP-002`, ...
+- Blockers: `BLK-001`, `BLK-002`, ...
+
+---
+
+## Copy-Paste Ready Commands
+
+### Write a Decision
+```bash
+./workflow decision --title "Decision title" --rationale "Why this decision" --agent A01
+```
+
+### Write an Assumption
+```bash
+./workflow assumption --text "Assumption text" --agent A01 --reversal "Condition to reverse"
+```
+
+### Signal Handoff to Next Agent
+```bash
+./workflow handoff --from A01 --to A02 --artifacts "file1.md,file2.md" --notes "Ready for next phase"
+```
+
+### Check Upstream Handoff
+```bash
+./workflow check-handoff HO-001
+```
+
+### Check Project Status
+```bash
+./workflow status
+```
+
+---
+
+## Python API
+
+For programmatic access:
+
+```python
+from scripts.ledger.entry_writer import write_handoff, write_decision
+from scripts.ledger.entry_reader import get_project_summary
+
+# Write entries
+entry_id, path = write_handoff("{{ project_name }}", "A01", "A02", artifacts=["spec.md"])
+entry_id, path = write_decision("{{ project_name }}", "A01", "Title", "Rationale")
+
+# Query
+summary = get_project_summary("{{ project_name }}")
+```
+

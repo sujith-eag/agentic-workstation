@@ -1,0 +1,21 @@
+[directories]
+projects = "projects"
+templates = "templates"
+manifests = "manifests"
+agent_files = "agent_files"
+artifacts = "artifacts"
+agent_log = "agent_log"
+agent_context = "agent_context"
+
+[governance]
+level = "moderate"
+rules_file = "governance_rules.yaml"
+
+[workflows]
+# Default workflow settings
+default = "planning"
+
+[logging]
+level = "INFO"
+file = "agentic_workflow.log"
+console = true

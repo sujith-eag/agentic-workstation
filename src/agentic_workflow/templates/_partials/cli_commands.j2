@@ -1,0 +1,73 @@
+{#- CLI Commands Partial -#}
+{#- Renders CLI commands with actual values (not placeholders) -#}
+
+{#- Parameters:
+    agent_id: current agent ID
+    next_agent_id: next agent ID (null for terminal)
+    workflow_name: current workflow name
+    required_artifacts: array of artifact filenames for handoff
+-#}
+
+## CLI Quick Reference
+
+### Session Commands
+
+```bash
+# Start/resume session
+./workflow session --agent {{ agent_id }}
+
+# Check session status
+./workflow status
+```
+
+### Logging Commands
+
+```bash
+# Record a decision
+./workflow decision --title "Decision Title" --rationale "Why this decision was made"
+
+# Record an assumption
+./workflow assumption --title "Assumption Title" --reasoning "Basis for assumption"
+
+# Track artifact update
+./workflow artifact --file "filename.md" --action "created|updated"
+```
+
+### Handoff Commands
+
+{% if next_agent_id %}
+```bash
+# Handoff to next agent
+./workflow handoff --from {{ agent_id }} --to {{ next_agent_id }} --artifacts "{{ required_artifacts | join(', ') if required_artifacts else 'artifact1.md, artifact2.md' }}"
+```
+{% else %}
+```bash
+# End workflow (terminal agent)
+./workflow end --summary "Workflow completion summary"
+```
+{% endif %}
+
+{% if checkpoint %}
+### Checkpoint Commands
+
+```bash
+# View checkpoint status
+./workflow checkpoint --status
+
+# Bypass checkpoint (if allowed)
+./workflow checkpoint-bypass --reason "Reason for bypassing"
+```
+{% endif %}
+
+### Configuration Commands
+
+```bash
+# View current config
+./workflow config --list
+
+# Change enforcement mode
+./workflow config --set enforcement.mode lenient
+
+# View effective config
+./workflow config --effective
+```

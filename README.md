@@ -2,7 +2,7 @@
 
 > **Structured Architectural Scaffolding for AI Development**
 
-[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/agentic-workflow-os)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/agentic-workflow-os)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](pkgs/container/agentic)
 
@@ -18,9 +18,143 @@ AI for projects and work is like a rocket: it gives a quick boost of velocity if
 
 **Agentic Workflow solves this by:**
 1.  **Strict Role Separation:** "Architects" write specs. "Engineers" write code. They never swap roles.
-2.  **Artifact-Driven Handoffs:** An agent cannot proceed until it receives a specific, validated artifact from its predecessor.
+2.  **Artifact-Driven Handoffs:** An agent cannot proceed until it receives a specific, validated artifact (e.g., `api_spec.md`) from its predecessor.
 3.  **No "Chatting":** You don't chat in the terminal. The system generates a comprehensive **Context File** that you drop into your preferred AI (ChatGPT, Claude, Gemini, VS Code Copilot). The AI does the work, and you save the result. The system tracks the state.
 
 ---
 
-## 🚀 Landing soon
+## 🏗️ Architecture
+
+The system operates on a **Stateless Core / Stateful Edge** model.
+
+```mermaid
+graph TD
+    A[Core Library (Pip/Docker)] -->|Scaffolds| B(Project Folder)
+    B -->|Contains| C{State Machine}
+    C -->|Project Config| D[agentic.toml]
+    C -->|Runtime State| E[active_session.md]
+    C -->|Immutable Log| F[exchange_log.md]
+    
+    G[User] -->|Runs| H[TUI Console]
+    H -->|Reads/Writes| C
+    
+    I[AI Model (External)] -->|Reads| E
+    I -->|Generates| J[Code & Artifacts]
+```
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+**Option A: Pip (Recommended)**
+```bash
+pip install agentic-workflow
+```
+*Note: Package will be available on PyPI soon. For now, install from source.*
+
+**Option B: Docker**
+```bash
+# Build locally
+docker build -t agentic-workflow .
+alias agentic="docker run -it -v $(pwd):/data agentic-workflow"
+```
+
+### 1. Initialize a Project
+Navigate to your empty folder and initialize a project.
+```bash
+mkdir my-new-saas && cd my-new-saas
+agentic project init MySaaS
+```
+*This creates a project with the default "planning" workflow. Use `--workflow` to specify another workflow.*
+
+### 2. The "Active Session" Loop
+The system creates an `active_session.md` file. This is your interface with the AI.
+1.  **Activate:** `agentic workflow activate A-01` (Project Guide).
+2.  **Generate:** Copy the content of `active_session.md` into your LLM (Claude/GPT-4).
+3.  **Save:** Paste the LLM's output into the requested file (e.g., `artifacts/A-01/project_brief.md`).
+4.  **Handoff:** Tell the system you are done.
+    ```bash
+    agentic workflow handoff --to A-02 --artifacts artifacts/A-01/project_brief.md
+    ```
+    *The system validates that the file exists before allowing the handoff.*
+
+### 3. Review Status
+View the decision tree and current state.
+```bash
+agentic workflow status
+```
+
+---
+
+## 📦 Workflows
+
+The system supports pluggable **Workflow Manifests**.
+
+### 1. Planning (Canonical)
+*   **Goal:** Turn a 1-sentence idea into a full Tech Spec.
+*   **Agents:**
+    *   `A-01 Incubation`: Refines the idea.
+    *   `A-02 Requirements`: Lists functional/non-functional reqs.
+    *   `A-03 Architect`: Designs the system topology.
+    *   `A-04 Security`: Threat modeling.
+    *   (And 10 more specialized roles).
+
+### 2. Implementation (Canonical)
+*   **Goal:** Turn specs into code.
+*   **Agents:**
+    *   `E-01 Frontend`: React/Vue/Svelte implementation.
+    *   `E-02 Backend`: API & Logic.
+    *   `E-03 Database`: Schema & Migrations.
+
+### 3. Custom Workflows
+You can create your own workflows by placing a manifest in:
+- Project: `./.agentic/workflows/my-custom-flow/workflow.json`
+- User global: `~/.config/agentic/workflows/my-custom-flow/workflow.json`
+- System: Bundled in package (not recommended for custom)
+
+Workflow manifests include `workflow.json`, `agents.json`, `artifacts.json`, etc.
+
+---
+
+## ⚙️ Configuration & Governance
+
+### `agentic.toml`
+Every project handles its own configuration.
+```toml
+[project]
+name = "MySaaS"
+version = "0.1.0"
+
+[governance]
+require_reviews = true
+git_commit_on_handoff = true
+```
+
+### Global Config (`~/.config/agentic/config.toml`)
+Set your preferences for all projects.
+```toml
+[directories]
+projects = "projects"
+
+[governance]
+level = "moderate"
+
+[workflows]
+default = "planning"
+```
+
+---
+
+## 🛠️ Development
+
+This project is built with Python 3.10+.
+
+*   **Core:** `src/agentic_workflow`
+*   **Manifests:** `src/agentic_workflow/manifests` (Canonical Definitions)
+*   **Templates:** `src/agentic_workflow/templates` (Jinja2 templates)
+*   **Build:** `pyproject.toml` (Hatchling)
+*   **Tests:** Not included in deployment
+
+**License:** MIT
