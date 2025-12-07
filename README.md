@@ -1,12 +1,12 @@
-# Agentic Workflow System
+# Agentic Workstation
 
 > **Structured Architectural Scaffolding for AI Development**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/agentic-workflow-os)
+[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/sujith-eag/agentic-workstation)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](pkgs/container/agentic)
 
-**Agentic Workflow** is a development platform that orchestrates Multi-Agent Systems to plan, architect, and implement complex software projects. Unlike "Chat with Code" tools that rely on messy, unstructured conversation history, this system enforces a **Context-First** philosophy. It treats Agent Context as a file-system state machine, ensuring that your AI Engineer knows exactly what your AI Architect decided.
+**Agentic Workstation** is a development platform that orchestrates Multi-Agent Systems to plan, architect, and implement complex software projects. Unlike "Chat with Code" tools that rely on messy, unstructured conversation history, this system enforces a **Context-First** philosophy. It treats Agent Context as a file-system state machine, ensuring that your AI Engineer knows exactly what your AI Architect decided.
 
 ---
 
@@ -16,7 +16,7 @@ Most AI coding tools suffer from **Context Drift**. After 20 messages, the AI fo
 
 AI for projects and work is like a rocket: it gives a quick boost of velocity if you have direction, but soon everyone realizes it's only a first-stage booster that stops midway once context is off. The velocity drops, and to carry forward and build production-grade applications needs a 2nd and 3rd stage booster with precision guidance to reach and stay in orbit. **This project is that 2nd and 3rd stage.**
 
-**Agentic Workflow solves this by:**
+**Agentic Workstation solves this by:**
 1.  **Strict Role Separation:** "Architects" write specs. "Engineers" write code. They never swap roles.
 2.  **Artifact-Driven Handoffs:** An agent cannot proceed until it receives a specific, validated artifact (e.g., `api_spec.md`) from its predecessor.
 3.  **No "Chatting":** You don't chat in the terminal. The system generates a comprehensive **Context File** that you drop into your preferred AI (ChatGPT, Claude, Gemini, VS Code Copilot). The AI does the work, and you save the result. The system tracks the state.
@@ -29,36 +29,67 @@ The system operates on a **Stateless Core / Stateful Edge** model.
 
 ```mermaid
 graph TD
-    A[Core Library (Pip/Docker)] -->|Scaffolds| B(Project Folder)
-    B -->|Contains| C{State Machine}
-    C -->|Project Config| D[agentic.toml]
-    C -->|Runtime State| E[active_session.md]
-    C -->|Immutable Log| F[exchange_log.md]
+    A["Core Library (Pip/Docker)"] -->|"Scaffolds"| B["Project Folder"]
+    B -->|"Contains"| C{"State Machine"}
+    C -->|"Project Config"| D["agentic.toml"]
+    C -->|"Runtime State"| E["active_session.md"]
+    C -->|"Immutable Log"| F["exchange_log.md"]
     
-    G[User] -->|Runs| H[TUI Console]
-    H -->|Reads/Writes| C
+    G["User"] -->|"Runs"| H["CLI Commands"]
+    H -->|"Reads/Writes"| C
     
-    I[AI Model (External)] -->|Reads| E
-    I -->|Generates| J[Code & Artifacts]
+    I["A-01: Project Guide"] -->|"Reads"| E
+    I -->|"Generates"| J["artifacts/A-01/"]
+    J -->|"Triggers"| K["A-02: Planning Analyst"]
+    K -->|"Generates"| L["artifacts/A-02/"]
+    L -->|"Triggers"| M["A-03: Architecture Designer"]
 ```
 
 ---
 
 ## 🚀 Quick Start
 
+### Environment Setup
+Create and activate a Python virtual environment:
+```bash
+# Create virtual environment
+python3 -m venv myproject-env
+
+# Activate the environment
+source myproject-env/bin/activate  
+
+# On Windows: 
+source myproject-env\Scripts\activate
+```
+
 ### Installation
 
 **Option A: Pip (Recommended)**
 ```bash
-pip install agentic-workflow
+pip install agentic-workstation
 ```
-*Note: Package will be available on PyPI soon. For now, install from source.*
+
+**Option B: Docker** (Soon to be deployed to Docker Hub)
+```bash
+# Build locally
+docker build -t agentic-workstation .
+alias agentic="docker run -it -v $(pwd):/data agentic-workstation"
+```
+
+### Uninstallation
+
+**Option A: Pip**
+```bash
+pip uninstall agentic-workstation
+```
 
 **Option B: Docker**
 ```bash
-# Build locally
-docker build -t agentic-workflow .
-alias agentic="docker run -it -v $(pwd):/data agentic-workflow"
+# Remove the Docker image
+docker rmi agentic-workstation
+
+# Remove any running containers (if any)
+docker rm $(docker ps -aq --filter ancestor=agentic-workstation)
 ```
 
 ### 1. Initialize a Project

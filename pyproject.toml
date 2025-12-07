@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentic-workflow"
+name = "agentic-workstation"
 version = "1.0.0"
 description = "Multi-agent planning and workflow orchestration system"
 readme = "README.md"
