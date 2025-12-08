@@ -16,7 +16,7 @@ from ...core.exceptions import (
 )
 from ...services import ProjectService
 from ...workflow import load_workflow
-from ..utils import display_action_result, display_info, display_error, display_warning, display_project_summary
+from ..utils import display_action_result, display_info, display_error, display_warning, display_project_summary, shorten_path
 from agentic_workflow.core.paths import get_projects_dir
 
 logger = logging.getLogger(__name__)
@@ -137,7 +137,7 @@ version = "{project_config['version']}"
                         self._format_project_output(result['config'], output_format, f"Project: {project_name}")
                     else:
                         display_warning(f"Project '{project_name}' found but no configuration available")
-                        display_info(f"Location: {result.get('path', 'unknown')}")
+                        display_info(f"Location: {shorten_path(result.get('path', 'unknown'))}")
                 else:
                     raise ProjectNotFoundError(f"Project '{project_name}' not found")
             else:
@@ -212,7 +212,7 @@ version = "{project_config['version']}"
                 self._format_project_output(result['config'], 'table', "Current Project Status")
             else:
                 display_warning("Project found but no configuration available")
-                display_info(f"Location: {result.get('path', 'unknown')}")
+                display_info(f"Location: {shorten_path(result.get('path', 'unknown'))}")
 
         except Exception as e:
             handle_error(e, "project status", {})

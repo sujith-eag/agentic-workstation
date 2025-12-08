@@ -44,7 +44,7 @@ class WorkflowHandlers:
             for workflow in workflows:
                 try:
                     info = self.workflow_service.get_workflow_info(workflow['name'])
-                    desc = f"{info.get('description', 'No description')[:60]}... (Agents: {info.get('agent_count', 0)}, v{info.get('version', 'unknown')})"
+                    desc = f"{info.get('description', 'No description')}\n(Agents: {info.get('agent_count', 0)}, v{info.get('version', 'unknown')})"
                     commands.append({
                         'command': workflow['name'],
                         'description': desc

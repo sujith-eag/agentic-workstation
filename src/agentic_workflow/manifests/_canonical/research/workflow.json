@@ -4,7 +4,7 @@
   "name": "research",
   "display_name": "Research Workflow",
   "version": "1.0.0",
-  "description": "Evidence-based academic research pipeline from ideation to publication-ready manuscripts",
+  "description": "Academic-grade research workflow designed for systematic literature review and knowledge synthesis. A team of research specialists conducts comprehensive analysis across multiple domains to produce structured reports, knowledge maps, and actionable insights with proper methodology and documentation.",
   "author": "agentic-workflow-os",
   "created": "2025-11-20",
   "updated": "2025-12-04",

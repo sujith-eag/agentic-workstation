@@ -4,7 +4,7 @@
   "name": "planning",
   "display_name": "Planning Workflow",
   "version": "1.0.0",
-  "description": "Comprehensive software project planning workflow.\n15 agents cover orchestrator, requirements, architecture, security, infrastructure,\ndata, API, UX, dev workflow, QA, product, SRE, transition, and audit.\n",
+  "description": "Comprehensive software project planning workflow that transforms ideas into detailed technical specifications. A team of specialized agents systematically analyzes requirements, designs architecture, and creates complete technical foundations for software implementation projects.",
   "author": "agentic-workflow-os",
   "created": "2025-11-20",
   "updated": "2025-11-29",

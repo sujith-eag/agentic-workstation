@@ -4,7 +4,7 @@
   "name": "workflow-creation",
   "display_name": "Workflow Creation Workflow",
   "version": "1.0.0",
-  "description": "A guided workflow for creating new workflow packages. Each agent leads the user through one phase of workflow creation, gathering requirements, generating files, and validating before handoff.",
+  "description": "Meta-workflow for creating new workflow packages within the agentic-workflow-os ecosystem. A specialized team guides users through the complete workflow development lifecycle, producing complete, production-ready workflow packages that integrate seamlessly with the existing system.",
   "author": "agentic-workflow-os",
   "created": "2025-11-20",
   "updated": "2025-12-04",

@@ -157,7 +157,7 @@ def display_help_panel(title: str, commands: List[Dict[str, str]]):
     # Create table for commands
     table = Table(box=None, pad_edge=False)
     table.add_column("Command", style="green", no_wrap=True)
-    table.add_column("Description", style="white")
+    table.add_column("Description", style="white", overflow="fold")  # Allow wrapping
 
     for cmd in commands:
         table.add_row(cmd.get('command', ''), cmd.get('description', ''))
@@ -259,18 +259,6 @@ def format_file_list(files: List[str], prefix: str = "✓ Generated:", max_line_
 
     return formatted_lines
 
-
-def get_project_root() -> Optional[Path]:
-    """Find the project root directory by looking for project structure."""
-    current = Path.cwd()
-    
-    # Walk up the directory tree
-    for path in [current] + list(current.parents):
-        # Check for project indicators (agent_files and agent_context directories)
-        if (path / "agent_files").exists() and (path / "agent_context").exists():
-            return path
-    
-    return None
 
 def is_in_project() -> bool:
     """Check if we're currently in a project directory."""

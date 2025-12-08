@@ -11,7 +11,6 @@ import logging
 
 from ...core.exceptions import CLIExecutionError, handle_error, validate_required
 from ...services import LedgerService
-from ..utils import display_success
 from ..utils import display_action_result
 
 logger = logging.getLogger(__name__)

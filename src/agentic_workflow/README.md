@@ -37,8 +37,8 @@ Each project has a local `./workflow` wrapper that auto-detects the project cont
 ```bash
 cd projects/my_project
 ./workflow status
-./workflow activate A-01
-./workflow handoff --from A-01 --to A-02 --artifacts "spec.md"
+./workflow activate A01
+./workflow handoff --from A01 --to A02 --artifacts "spec.md"
 ```
 
 #### 2. From Repository Root

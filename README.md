@@ -1,6 +1,6 @@
 # Agentic Workstation
 
-> **AI-Powered Software Implementation with Quality Assurance**
+> **Structured Architectural Scaffolding for AI Development**
 
 [![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/sujith-eag/agentic-workstation)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -23,6 +23,34 @@ AI for projects and work is like a rocket: it gives a quick boost of velocity if
 
 ---
 
+
+
+## CLI Usage
+
+For detailed CLI documentation, see [CLI_REFERENCE.md](docs/CLI_REFERENCE.md).
+
+### Quick Start
+
+```bash
+# Install
+pip install agentic-workstation
+
+# Initialize project
+agentic project init my_project
+
+# Start workflow
+agentic workflow init my_project
+
+# Activate first agent
+agentic workflow activate my_project A01
+```
+
+### Available Commands
+
+- `agentic project` - Project management (init, list, remove, status)
+- `agentic workflow` - Workflow orchestration (init, activate, handoff, status)
+- `agentic --help` - Show all available options
+
 ## 🏗️ Architecture
 
 The system operates on a **Stateless Core / Stateful Edge** model.
@@ -33,26 +61,21 @@ graph TD
     B -->|"Contains"| C{"State Machine"}
     C -->|"Project Config"| D["agentic.toml"]
     C -->|"Runtime State"| E["active_session.md"]
-    C -->|"Immutable Log"| F["exchange_log.md"]
+    C -->|"Immutable Log"| F["agent_log/"]
     
     G["User"] -->|"Runs"| H["CLI Commands"]
     H -->|"Reads/Writes"| C
     
-    I["A-01: Project Guide"] -->|"Reads"| E
-    I -->|"Generates"| J["artifacts/A-01/"]
-    J -->|"Triggers"| K["A-02: Planning Analyst"]
-    K -->|"Generates"| L["artifacts/A-02/"]
-    L -->|"Triggers"| M["A-03: Architecture Designer"]
+    I["A01: Project Guide"] -->|"Reads"| E
+    I -->|"Generates"| J["artifacts/A01/"]
+    J -->|"Triggers"| K["A02: Requirements Analyst"]
+    K -->|"Generates"| L["artifacts/A02/"]
+    L -->|"Triggers"| M["A03: System Architect"]
 ```
 
 ---
 
 ## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.10+
-- A completed planning project (from Agentic Workstation Planning workflow)
-- Basic familiarity with your preferred AI assistant (Claude, GPT-4, etc.)
 
 ### Environment Setup
 Create and activate a Python virtual environment:
@@ -72,8 +95,18 @@ source myproject-env\Scripts\activate
 **Option A: Pip (Recommended)**
 ```bash
 pip install agentic-workstation
+
+# Verify installation
+agentic --version
+agentic workflow list
 ```
 
+**Option B: From Source (Development)**
+```bash
+git clone https://github.com/sujith-eag/agentic-workstation.git
+cd agentic-workstation
+pip install -e .
+```
 
 ### Uninstallation
 
@@ -82,14 +115,20 @@ pip install agentic-workstation
 pip uninstall agentic-workstation
 ```
 
+**Option B: Docker**
+```bash
+# Remove the Docker image
+docker rmi agentic-workstation
+
+# Remove any running containers (if any)
+docker rm $(docker ps -aq --filter ancestor=agentic-workstation)
+```
+
 ### 1. Initialize a Project
 Navigate to your empty folder and initialize a project.
 ```bash
-# Create a new directory for your implementation
-mkdir my-app-implementation && cd my-app-implementation
-
-# Initialize with implementation workflow
-agentic project init MyApp --workflow implementation
+mkdir my-new-saas && cd my-new-saas
+agentic project init MySaaS
 ```
 *This creates a project with the default "planning" workflow. Use `--workflow` to specify another workflow.*
 
@@ -112,7 +151,7 @@ agentic workflow status
 
 ---
 
-## 📦 Workflows
+## 📦 Workflows (NOT ENTIRLY COVERED YET)
 
 The system supports pluggable **Workflow Manifests**.
 
@@ -132,22 +171,6 @@ The system supports pluggable **Workflow Manifests**.
     *   `E-02 Backend`: API & Logic.
     *   `E-03 Database`: Schema & Migrations.
 
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   INTAKE    │───▶│    SPEC     │───▶│  APPROVED   │
-│             │    │             │    │             │
-│ Task loaded │    │ Mini-spec   │    │ Human OK    │
-└─────────────┘    └─────────────┘    └─────────────┘
-                                                        │
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ▼
-│ TEST_WRITE  │───▶│ IMPLEMENT   │───▶│ INSTRUMENT  │───▶ COMPLETE
-│             │    │             │    │             │
-│ Write tests │    │ Write code  │    │ Add logging │
-└─────────────┘    └─────────────┘    └─────────────┘
-```
-
-**8 stages** ensure systematic progress with quality checkpoints.
-
 ### 3. Custom Workflows
 You can create your own workflows by placing a manifest in:
 - Project: `./.agentic/workflows/my-custom-flow/workflow.json`
@@ -157,6 +180,62 @@ You can create your own workflows by placing a manifest in:
 Workflow manifests include `workflow.json`, `agents.json`, `artifacts.json`, etc.
 
 ---
+
+## 🛠️ CLI Commands
+
+### Global Commands
+```bash
+# List available workflows
+agentic workflow list
+
+# List all projects
+agentic project list
+
+# Show CLI help
+agentic --help
+```
+
+### Project Commands
+```bash
+# Create new project
+agentic project init MyProject --workflow planning --description "My project description"
+
+# Show project status
+agentic project status
+
+# List projects
+agentic project list
+```
+
+### Workflow Commands (within project)
+```bash
+# Initialize workflow session
+agentic workflow init planning
+
+# Show workflow status
+agentic workflow status
+
+# Activate an agent
+agentic workflow activate A01
+
+# Record handoff between agents
+agentic workflow handoff --from A01 --to A02 --artifacts "file1.md,file2.pdf"
+
+# Record decisions
+agentic workflow decision --title "Decision title" --rationale "Reasoning"
+
+# End workflow
+agentic workflow end
+```
+
+### Project-Specific Usage
+Each project includes a `workflow` script for convenient access:
+```bash
+cd projects/MyProject
+./workflow status          # Project status
+./workflow activate A01    # Activate agent
+./workflow handoff --from A01 --to A02 --artifacts file.md
+```
 
 ## ⚙️ Configuration & Governance
 

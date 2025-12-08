@@ -7,7 +7,7 @@ This service handles ledger operations like handoffs, decisions, etc.
 from typing import Dict, Any, Optional, List
 import logging
 
-from ..ledger.entry_writer import write_handoff
+from ..ledger.entry_reader import get_project_summary, get_active_session, get_handoffs
 
 logger = logging.getLogger(__name__)
 
@@ -46,5 +46,38 @@ class LedgerService:
 
     def get_status(self, project_name: str) -> Dict[str, Any]:
         """Get project status."""
-        # Placeholder implementation
-        return {}
+        try:
+            # Get project summary from logs
+            summary = get_project_summary(project_name)
+            
+            # Check for active session
+            active_session = get_active_session(project_name)
+            active_agents = 1 if active_session else 0
+            
+            # Get total handoffs (completed ones)
+            all_handoffs = get_handoffs(project_name)
+            completed_handoffs = len([h for h in all_handoffs if h.get('status') == 'completed'])
+            
+            # Determine last activity
+            last_activity = "No recent activity"
+            if active_session:
+                last_activity = f"Agent {active_session.get('agent_id', 'Unknown')} active"
+            elif all_handoffs:
+                last_handoff = all_handoffs[-1]  # Most recent
+                last_activity = f"Last handoff: {last_handoff.get('from_agent', '?')} → {last_handoff.get('to_agent', '?')}"
+            
+            return {
+                "active_agents": active_agents,
+                "completed_handoffs": completed_handoffs,
+                "open_blockers": summary.get('active_blockers', 0),
+                "last_activity": last_activity
+            }
+        except Exception as e:
+            logger.error(f"Failed to get status for project '{project_name}': {e}")
+            # Return basic status on error
+            return {
+                "active_agents": 0,
+                "completed_handoffs": 0,
+                "open_blockers": 0,
+                "last_activity": "Status unavailable"
+            }

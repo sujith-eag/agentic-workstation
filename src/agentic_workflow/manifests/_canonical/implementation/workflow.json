@@ -4,7 +4,7 @@
   "name": "implementation",
   "display_name": "Implementation Workflow",
   "version": "1.0.0",
-  "description": "Test-driven implementation workflow following the 'Test-First, Trace-Always, Gate-Before-Go' philosophy. 6 core agents handle scaffold, backend, frontend, quality, and release. 4 on-demand agents provide security, documentation, data stewardship, and performance expertise.",
+  "description": "Test-driven implementation workflow following the 'Test-First, Trace-Always, Gate-Before-Go' philosophy. A focused team of agents handles project development from scaffolding to deployment, transforming planning artifacts into production-ready code with comprehensive testing and quality assurance.",
   "author": "agentic-workflow-os",
   "created": "2025-11-29",
   "updated": "2025-12-04",
