@@ -11,6 +11,7 @@ No argparse.Namespace conversion - handlers are designed to accept kwargs.
 
 import click
 from typing import Optional
+from rich_click import RichGroup
 
 from ..handlers import SessionHandlers, EntryHandlers, QueryHandlers, WorkflowHandlers
 from ..utils import display_error, display_success
@@ -23,7 +24,7 @@ _query_handlers = QueryHandlers()
 _workflow_handlers = WorkflowHandlers()
 
 
-@click.group()
+@click.group(cls=RichGroup)
 def workflow():
     """Manage agentic workflows."""
     pass

@@ -7,6 +7,7 @@ No argparse.Namespace conversion - handlers are designed to accept kwargs.
 """
 import click
 from typing import Optional
+from rich_click import RichGroup
 
 from ..handlers.project_handlers import ProjectHandlers
 from ..utils import display_error
@@ -15,7 +16,7 @@ from ..utils import display_error
 handlers = ProjectHandlers()
 
 
-@click.group()
+@click.group(cls=RichGroup)
 def project():
     """Manage agentic workflow projects."""
     pass

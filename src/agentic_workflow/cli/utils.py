@@ -349,7 +349,7 @@ fi
         generate_project_files(project_path, workflow_type)
     except Exception as e:
         # Log warning but don't fail project creation
-        console.print(f"[yellow]Warning: Could not generate project files: {e}[/yellow]")
+        display_warning(f"Could not generate project files: {e}")
 
 def generate_project_files(project_path: Path, workflow_type: str):
     """Generate initial project files using templates and canonical data."""
@@ -387,7 +387,7 @@ def generate_project_files(project_path: Path, workflow_type: str):
             (project_path / "agent_files" / agent_filename).write_text(agent_content)
 
         except Exception as e:
-            console.print(f"[yellow]Warning: Could not generate agent file for {agent_id}: {e}[/yellow]")
+            display_warning(f"Could not generate agent file for {agent_id}: {e}")
 
     # Session initialization is now handled by runtime.py
 
@@ -403,13 +403,13 @@ def generate_project_files(project_path: Path, workflow_type: str):
         governance_content = render_template('docs/GOVERNANCE_GUIDE.md.j2', governance_context, workflow_type)
         (project_path / "docs" / "GOVERNANCE_GUIDE.md").write_text(governance_content)
     except Exception as e:
-        console.print(f"[yellow]Warning: Could not generate governance guide: {e}[/yellow]")
+        display_warning(f"Could not generate governance guide: {e}")
 
     # Generate initial artifact stubs for required artifacts
     try:
         generate_initial_artifacts(project_path, canonical_data, workflow_type)
     except Exception as e:
-        console.print(f"[yellow]Warning: Could not generate initial artifacts: {e}[/yellow]")
+        display_warning(f"Could not generate initial artifacts: {e}")
 
 def generate_initial_artifacts(project_path: Path, canonical_data: Dict[str, Any], workflow_type: str):
     """Generate initial artifact stub files for required artifacts."""

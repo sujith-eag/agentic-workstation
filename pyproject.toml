@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentic-workstation"
-version = "1.0.2"
+version = "1.0.3"
 description = "Multi-agent planning and workflow orchestration system"
 readme = "README.md"
 license = "MIT"
@@ -17,6 +17,8 @@ dependencies = [
     "pyyaml>=6.0.0",         # For ledger YAML files
     "jsonschema>=4.17.0",    # Schema validation
     "rich>=13.0.0",          # CLI formatting
+    "rich-click>=1.7.0",     # Rich-styled CLI help
+    "questionary>=2.0.0",    # Interactive prompts for TUI
     "structlog>=25.0.0",     # Structured logging
     "tomli_w>=1.0.0",        # TOML writing support
     "toml>=0.10.0",          # Fallback TOML support
@@ -42,7 +44,6 @@ performance = [
     "cachetools>=5.3.0",     # Caching utilities
 ]
 interactive = [
-    "questionary>=2.0.0",    # Interactive prompts
     "click-completion>=0.5.0", # Shell completion
 ]
 external = [
