@@ -46,7 +46,7 @@ cd projects/my_project
 Use the Python module with explicit project argument:
 
 ```bash
-python3 -m scripts.cli.workflow init my_project --workflow planning
+python3 -m scripts.cli.workflow init my_project --workflow planning --description "My project"
 python3 -m scripts.cli.workflow refresh my_project
 python3 -m scripts.cli.workflow list-workflows
 python3 -m scripts.cli.workflow list-workflows --json
@@ -60,7 +60,7 @@ python3 -m scripts.cli.workflow list-workflows --json
 
 | Command | From Project Dir | From Repo Root |
 |---------|------------------|----------------|
-| Initialize | N/A | `python3 -m scripts.cli.workflow init <project> --workflow planning` |
+| Initialize | N/A | `python3 -m scripts.cli.workflow init <project> --workflow planning --description "Project description"` |
 | Refresh | N/A | `python3 -m scripts.cli.workflow refresh <project>` |
 | List Workflows | N/A | `python3 -m scripts.cli.workflow list-workflows [--json]` |
 
@@ -295,7 +295,7 @@ python3 -m agentic_workflow.validation.validate_agents
 
 ```bash
 # 1. Initialize project with planning workflow
-python3 -m scripts.cli.workflow init my_project --workflow planning
+python3 -m scripts.cli.workflow init my_project --workflow planning --description "My project"
 
 # 2. Work from project directory
 cd projects/my_project

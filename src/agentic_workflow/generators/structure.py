@@ -45,7 +45,7 @@ def create_project_directories(target_path: Path, config: Dict[str, Any], workfl
         if not dir_path.exists():
             dir_path.mkdir(parents=True, exist_ok=True)
             created_dirs.append(dir_name)
-            logger.info(f"Created directory: {dir_path}")
+            display_success(f"Created directory: {dir_path}")
 
     # Create agent-specific subdirectories in artifacts
     if workflow_data:

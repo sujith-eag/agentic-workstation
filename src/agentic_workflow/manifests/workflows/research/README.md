@@ -8,7 +8,7 @@ The Research Workflow guides users through the complete research lifecycle: form
 
 ```bash
 # Initialize a new research project
-python3 -m scripts.cli.workflow init my_research --workflow research
+python3 -m scripts.cli.workflow init my_research --workflow research --description "My research project"
 
 # Start working
 cd projects/my_research

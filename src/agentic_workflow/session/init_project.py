@@ -142,7 +142,7 @@ def _create_log_files(logs_dir: Path, project_name: str, workflow_name: str) -> 
                 display_success(f"Created YAML sidecar (fallback list): /{yaml_path.relative_to(get_projects_dir())}")
 
 
-def _create_project_metadata(project_dir: Path, project_name: str, wf, timestamp: str) -> None:
+def _create_project_metadata(project_dir: Path, project_name: str, wf, timestamp: str, description: str = None) -> None:
     """Create project metadata file with workflow info.
     
     Args:
@@ -150,6 +150,7 @@ def _create_project_metadata(project_dir: Path, project_name: str, wf, timestamp
         project_name: Project name.
         wf: WorkflowPackage instance.
         timestamp: ISO format timestamp.
+        description: Project description.
     """
     meta_path = project_dir / PROJECT_CONFIG_FILE
     meta_data = {
@@ -158,6 +159,10 @@ def _create_project_metadata(project_dir: Path, project_name: str, wf, timestamp
         'workflow_version': wf.version,
         'created': timestamp,
     }
+    
+    # Add description if provided
+    if description:
+        meta_data['description'] = description
     
     # Workflows with stages get stage tracking
     if wf.stages:
@@ -409,12 +414,13 @@ def _create_workflow_wrapper(project_dir: Path) -> None:
     display_success(f"Created workflow wrapper: /{workflow_dest.relative_to(get_projects_dir())}")
 
 
-def init_project(project_name: str, workflow_name: str = None) -> None:
+def init_project(project_name: str, workflow_name: str = None, description: str = None) -> None:
     """Initialize a new project structure.
     
     Args:
         project_name: Name of the project to create.
         workflow_name: Workflow type (default: from registry).
+        description: Project description.
     """
     project_dir = get_projects_dir() / project_name
     timestamp = datetime.datetime.now().isoformat()
@@ -467,7 +473,7 @@ def init_project(project_name: str, workflow_name: str = None) -> None:
     _create_workflow_wrapper(project_dir)
     
     # 9. Create project metadata
-    _create_project_metadata(project_dir, project_name, wf, timestamp)
+    _create_project_metadata(project_dir, project_name, wf, timestamp, description)
     
     # 10. Generate agent files to project directory using Jinja2 templates
     agent_files_dir = project_dir / "agent_files"

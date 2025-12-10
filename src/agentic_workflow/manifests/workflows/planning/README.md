@@ -34,10 +34,10 @@ This workflow package provides a comprehensive planning pipeline for software pr
 
 ```bash
 # Initialize a project with this workflow
-python3 -m scripts.cli.workflow init myproject --workflow planning
+python3 -m scripts.cli.workflow init myproject --workflow planning --description "My planning project"
 
 # Or use the default (planning is default)
-python3 -m scripts.cli.workflow init myproject
+python3 -m scripts.cli.workflow init myproject --description "My project"
 ```
 
 ## Pipeline Order

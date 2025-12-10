@@ -18,6 +18,16 @@ def check_for_updates(console: Console) -> None:
     console.print("[dim]Update checking not yet implemented[/dim]")
 
 
+def launch_web_ui() -> None:
+    """Launch the web UI (stub implementation).
+    
+    TODO: Implement web UI server using FastAPI or similar.
+    This should start a local server and open the browser.
+    """
+    console.print("[yellow]Web UI not yet implemented[/yellow]")
+    console.print("[dim]This feature is planned for a future release.[/dim]")
+
+
 @click.group()
 @click.version_option(version=__version__)
 @click.option('--config', '-c', type=click.Path(exists=True), help='Config file path')

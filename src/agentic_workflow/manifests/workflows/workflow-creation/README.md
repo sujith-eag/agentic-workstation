@@ -72,7 +72,7 @@ This workflow provides structured guidance for:
 
 ```bash
 # Initialize a workflow-creation project
-python3 -m scripts.cli.workflow init my_new_workflow --workflow workflow-creation
+python3 -m scripts.cli.workflow init my_new_workflow --workflow workflow-creation --description "Creating a new workflow"
 
 # Start with the guide
 cd projects/my_new_workflow

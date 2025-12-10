@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional, List
 import logging
 
 from ..ledger.entry_reader import get_project_summary, get_active_session, get_handoffs
+from ..ledger.entry_writer import write_handoff, write_decision
 
 logger = logging.getLogger(__name__)
 

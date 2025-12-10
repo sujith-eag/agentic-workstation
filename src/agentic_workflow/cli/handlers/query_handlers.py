@@ -3,9 +3,11 @@ Query command handlers for Agentic Workflow CLI.
 
 This module contains handlers for query-related commands like status, check-handoff, etc.
 Extracted from the monolithic workflow.py for better maintainability.
+
+Design Decision: Handlers accept keyword arguments directly instead of argparse.Namespace.
+This allows the handlers to be used both from CLI (via Click) and programmatically (from services).
 """
 
-import argparse
 from typing import Optional, List
 import logging
 
@@ -17,98 +19,112 @@ logger = logging.getLogger(__name__)
 
 
 class QueryHandlers:
-    """Handlers for query-related CLI commands."""
+    """Handlers for query-related CLI commands.
+    
+    All handler methods accept keyword arguments directly for clean integration
+    with Click commands. No argparse.Namespace conversion required.
+    """
 
     def __init__(self):
         self.ledger_service = LedgerService()
         self.project_service = ProjectService()
 
-    def handle_status(self, args: argparse.Namespace) -> None:
+    def handle_status(
+        self,
+        project: str
+    ) -> None:
         """
         Handle project status command.
 
         Args:
-            args: Parsed command line arguments
+            project: Project name (required)
 
         Raises:
             CLIExecutionError: If status retrieval fails
         """
         try:
-            validate_required(args.project, "project", "status")
+            validate_required(project, "project", "status")
 
-            project_name = args.project
-            logger.info(f"Getting status for project '{project_name}'")
+            logger.info(f"Getting status for project '{project}'")
 
-            status = self.ledger_service.get_status(project_name)
+            status = self.ledger_service.get_status(project)
 
-            display_status_panel(project_name, status)
+            display_status_panel(project, status)
 
         except Exception as e:
-            handle_error(e, "status retrieval", {"project": getattr(args, 'project', None)})
+            handle_error(e, "status retrieval", {"project": project})
 
-    def handle_check_handoff(self, args: argparse.Namespace) -> None:
+    def handle_check_handoff(
+        self,
+        project: str,
+        agent_id: str
+    ) -> None:
         """
         Handle check handoff command.
 
         Args:
-            args: Parsed command line arguments
+            project: Project name (required)
+            agent_id: Agent ID to check (required)
 
         Raises:
             CLIExecutionError: If handoff check fails
         """
         try:
-            validate_required(args.project, "project", "check_handoff")
-            validate_required(args.agent_id, "agent_id", "check_handoff")
+            validate_required(project, "project", "check_handoff")
+            validate_required(agent_id, "agent_id", "check_handoff")
 
             # Placeholder - implement handoff check logic
-            logger.info(f"Checking handoff for {args.agent_id} in project '{args.project}'")
+            logger.info(f"Checking handoff for {agent_id} in project '{project}'")
             display_action_result(
-                action=f"Handoff status for {args.agent_id}: Available",
+                action=f"Handoff status for {agent_id}: Available",
                 success=True
             )
 
         except Exception as e:
-            handle_error(e, "handoff check", {
-                "project": getattr(args, 'project', None),
-                "agent_id": getattr(args, 'agent_id', None)
-            })
+            handle_error(e, "handoff check", {"project": project, "agent_id": agent_id})
 
-    def handle_list_pending(self, args: argparse.Namespace) -> None:
+    def handle_list_pending(
+        self,
+        project: str
+    ) -> None:
         """
         Handle list pending handoffs command.
 
         Args:
-            args: Parsed command line arguments
+            project: Project name (required)
 
         Raises:
             CLIExecutionError: If listing fails
         """
         try:
-            validate_required(args.project, "project", "list_pending")
+            validate_required(project, "project", "list_pending")
 
             # Placeholder - implement pending handoffs logic
-            logger.info(f"Listing pending handoffs for project '{args.project}'")
-            display_info(f"Pending handoffs in '{args.project}': None")
+            logger.info(f"Listing pending handoffs for project '{project}'")
+            display_info(f"Pending handoffs in '{project}': None")
 
         except Exception as e:
-            handle_error(e, "pending handoffs listing", {"project": getattr(args, 'project', None)})
+            handle_error(e, "pending handoffs listing", {"project": project})
 
-    def handle_list_blockers(self, args: argparse.Namespace) -> None:
+    def handle_list_blockers(
+        self,
+        project: str
+    ) -> None:
         """
         Handle list blockers command.
 
         Args:
-            args: Parsed command line arguments
+            project: Project name (required)
 
         Raises:
             CLIExecutionError: If listing fails
         """
         try:
-            validate_required(args.project, "project", "list_blockers")
+            validate_required(project, "project", "list_blockers")
 
             # Placeholder - implement blockers listing logic
-            logger.info(f"Listing blockers for project '{args.project}'")
-            display_info(f"Active blockers in '{args.project}': None")
+            logger.info(f"Listing blockers for project '{project}'")
+            display_info(f"Active blockers in '{project}': None")
 
         except Exception as e:
-            handle_error(e, "blockers listing", {"project": getattr(args, 'project', None)})
+            handle_error(e, "blockers listing", {"project": project})

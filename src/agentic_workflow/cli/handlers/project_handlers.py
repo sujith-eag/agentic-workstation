@@ -3,9 +3,11 @@ Project command handlers for Agentic Workflow CLI.
 
 This module contains handlers for project-related commands like init, list, remove, status.
 Extracted from the monolithic project.py for better maintainability.
+
+Design Decision: Handlers accept keyword arguments directly instead of argparse.Namespace.
+This allows the handlers to be used both from CLI (via Click) and programmatically (from services).
 """
 
-import argparse
 from pathlib import Path
 from typing import Optional, Dict, Any
 import logging
@@ -23,28 +25,39 @@ logger = logging.getLogger(__name__)
 
 
 class ProjectHandlers:
-    """Handlers for project-related CLI commands."""
+    """Handlers for project-related CLI commands.
+    
+    All handler methods accept keyword arguments directly for clean integration
+    with Click commands. No argparse.Namespace conversion required.
+    """
 
     def __init__(self):
         self.project_service = ProjectService()
 
-    def handle_init(self, args: argparse.Namespace) -> None:
+    def handle_init(
+        self,
+        name: str,
+        workflow: Optional[str] = None,
+        description: Optional[str] = None,
+        force: bool = False
+    ) -> None:
         """
         Handle project initialization command.
 
         Args:
-            args: Parsed command line arguments
+            name: Project name (required)
+            workflow: Workflow type to use (default: 'planning')
+            description: Project description
+            force: Overwrite existing project if True
 
         Raises:
             ProjectError: If initialization fails
         """
         try:
-            validate_required(args.name, "name", "project_init")
+            validate_required(name, "name", "project_init")
 
-            project_name = args.name
-            workflow_type = getattr(args, 'workflow', None) or 'planning'
-            description = getattr(args, 'description', None)
-            force = getattr(args, 'force', False)
+            project_name = name
+            workflow_type = workflow or 'planning'
 
             logger.info(f"Initializing project '{project_name}' with workflow '{workflow_type}'")
 
@@ -110,36 +123,38 @@ version = "{project_config['version']}"
             display_project_summary(project_name, workflow_type, directories, next_steps)
 
         except Exception as e:
-            handle_error(e, "project initialization", {"project_name": getattr(args, 'name', None)})
+            handle_error(e, "project initialization", {"project_name": name})
 
-    def handle_list(self, args: argparse.Namespace) -> None:
+    def handle_list(
+        self,
+        name: Optional[str] = None,
+        output_format: str = 'table'
+    ) -> None:
         """
         Handle project listing command.
 
         Args:
-            args: Parsed command line arguments
+            name: Specific project name to show (optional)
+            output_format: Output format - 'table', 'json', or 'yaml'
 
         Raises:
             ProjectError: If listing fails
         """
         try:
-            project_name = getattr(args, 'name', None)
-            output_format = getattr(args, 'output_format', 'table')
+            logger.info("Listing projects" if not name else f"Showing project '{name}'")
 
-            logger.info("Listing projects" if not project_name else f"Showing project '{project_name}'")
-
-            if project_name:
+            if name:
                 # Show specific project details
-                result = self.project_service.get_project_status(project_name)
+                result = self.project_service.get_project_status(name)
 
                 if result['status'] == 'found':
                     if result.get('config'):
-                        self._format_project_output(result['config'], output_format, f"Project: {project_name}")
+                        self._format_project_output(result['config'], output_format, f"Project: {name}")
                     else:
-                        display_warning(f"Project '{project_name}' found but no configuration available")
+                        display_warning(f"Project '{name}' found but no configuration available")
                         display_info(f"Location: {shorten_path(result.get('path', 'unknown'))}")
                 else:
-                    raise ProjectNotFoundError(f"Project '{project_name}' not found")
+                    raise ProjectNotFoundError(f"Project '{name}' not found")
             else:
                 # List all projects
                 result = self.project_service.list_projects()
@@ -154,46 +169,47 @@ version = "{project_config['version']}"
                         display_info(f"Note: {result['message']}")
 
         except Exception as e:
-            handle_error(e, "project listing", {"project_name": getattr(args, 'name', None)})
+            handle_error(e, "project listing", {"project_name": name})
 
-    def handle_remove(self, args: argparse.Namespace) -> None:
+    def handle_remove(
+        self,
+        name: str,
+        force: bool = False
+    ) -> None:
         """
         Handle project removal command.
 
         Args:
-            args: Parsed command line arguments
+            name: Project name to remove (required)
+            force: Force removal without confirmation
 
         Raises:
             ProjectError: If removal fails
         """
         try:
-            validate_required(args.name, "name", "project_remove")
+            validate_required(name, "name", "project_remove")
 
-            project_name = args.name
-            force = getattr(args, 'force', False)
-
-            logger.info(f"Removing project '{project_name}'")
+            logger.info(f"Removing project '{name}'")
 
             # Note: Confirmation logic should be handled in CLI command, not handler
             # This handler assumes confirmation has already been obtained
 
-            result = self.project_service.remove_project(project_name, force)
+            result = self.project_service.remove_project(name, force)
 
             display_action_result(
-                action=f"Project '{project_name}' removed successfully",
+                action=f"Project '{name}' removed successfully",
                 success=True,
                 details=[f"Location: {result.get('path', 'unknown')}"]
             )
 
         except Exception as e:
-            handle_error(e, "project removal", {"project_name": getattr(args, 'name', None)})
+            handle_error(e, "project removal", {"project_name": name})
 
-    def handle_status(self, args: argparse.Namespace) -> None:
+    def handle_status(self) -> None:
         """
         Handle project status command.
 
-        Args:
-            args: Parsed command line arguments
+        Shows the status of the current project (detected from CWD).
 
         Raises:
             ProjectError: If status retrieval fails

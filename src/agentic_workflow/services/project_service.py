@@ -10,6 +10,12 @@ from typing import Dict, Any, Optional
 import logging
 import yaml
 
+# Use tomllib for TOML files (Python 3.11+), fallback to tomli for older versions
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
+
 from ..core.exceptions import (
     ProjectError, ProjectNotFoundError, ProjectValidationError,
     validate_required, validate_path_exists
@@ -55,6 +61,7 @@ class ProjectService:
         self,
         project_name: str,
         workflow_type: str = 'planning',
+        description: Optional[str] = None,
         force: bool = False
     ) -> Dict[str, Any]:
         """
@@ -87,7 +94,7 @@ class ProjectService:
             # Initialize session files and project structure
             try:
                 from ..session.init_project import init_project
-                init_project(project_name, workflow_type)
+                init_project(project_name, workflow_type, description)
                 logger.info(f"Initialized session files for project '{project_name}'")
             except Exception as e:
                 logger.warning(f"Failed to initialize session files: {e}")
@@ -230,6 +237,47 @@ class ProjectService:
             'status': 'completed'
         }
 
+    def _load_project_config(self, config_path: Path) -> Dict[str, Any]:
+        """
+        Load project config from either TOML or JSON file.
+        
+        Args:
+            config_path: Path to config file (without extension)
+            
+        Returns:
+            Config data dict, or empty dict if file not found
+        """
+        # Try TOML first (preferred format)
+        toml_file = config_path.with_suffix('.toml')
+        if toml_file.exists():
+            try:
+                with open(toml_file, 'rb') as f:
+                    return tomllib.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load TOML config {toml_file}: {e}")
+        
+        # Try JSON (agentic.json)
+        json_file = config_path.with_suffix('.json')
+        if json_file.exists():
+            try:
+                import json
+                with open(json_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load JSON config {json_file}: {e}")
+        
+        # Try legacy project_config.json for backward compatibility
+        legacy_json_file = config_path.parent / 'project_config.json'
+        if legacy_json_file.exists():
+            try:
+                import json
+                with open(legacy_json_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load legacy config {legacy_json_file}: {e}")
+        
+        return {}
+    
     def list_projects(self) -> Dict[str, Any]:
         """
         List all available projects with their metadata.
@@ -255,27 +303,25 @@ class ProjectService:
 
             for item in projects_dir.iterdir():
                 if item.is_dir():
-                    config_file = item / 'agentic.toml'
-                    if config_file.exists():
-                        try:
-                            with open(config_file) as f:
-                                data = yaml.safe_load(f)
-                            projects.append({
-                                'name': item.name,
-                                'workflow': data.get('workflow', 'unknown'),
-                                'description': data.get('description', ''),
-                                'created': data.get('created', 'unknown'),
-                                'version': data.get('version', 'unknown')
-                            })
-                        except Exception as e:
-                            logger.warning(f"Error reading config for project '{item.name}': {e}")
-                            projects.append({
-                                'name': item.name,
-                                'workflow': 'unknown',
-                                'description': 'Error reading config',
-                                'created': 'unknown',
-                                'version': 'unknown'
-                            })
+                    config_data = self._load_project_config(item / 'agentic')
+                    
+                    if config_data:
+                        projects.append({
+                            'name': item.name,
+                            'workflow': config_data.get('workflow', 'unknown'),
+                            'description': config_data.get('description', ''),
+                            'created': config_data.get('created', 'unknown'),
+                            'version': config_data.get('version', 'unknown')
+                        })
+                    else:
+                        # No config file found, but directory exists
+                        projects.append({
+                            'name': item.name,
+                            'workflow': 'unknown',
+                            'description': '',  # Blank for consistency with projects that have config but no description field
+                            'created': 'unknown',
+                            'version': 'unknown'
+                        })
 
             return {
                 'projects': projects,
@@ -353,11 +399,9 @@ class ProjectService:
                     raise ProjectNotFoundError(f"Project '{project_name}' not found")
 
                 projects_dir = Path(self.config.get('directories', {}).get('projects', 'projects'))
-                config_file = projects_dir / project_name / 'agentic.toml'
+                project_data = self._load_project_config(projects_dir / project_name / 'agentic')
 
-                if config_file.exists():
-                    with open(config_file) as f:
-                        project_data = yaml.safe_load(f)
+                if project_data:
                     return {
                         'project_name': project_name,
                         'status': 'found',
@@ -383,14 +427,12 @@ class ProjectService:
                         'message': 'Not in a project directory'
                     }
 
-                config_file = project_root / 'agentic.toml'
-                if config_file.exists():
-                    with open(config_file) as f:
-                        project_data = yaml.safe_load(f)
+                config_data = self._load_project_config(project_root / 'agentic')
+                if config_data:
                     return {
-                        'project_name': project_data.get('name', 'unknown'),
+                        'project_name': config_data.get('name', 'unknown'),
                         'status': 'current',
-                        'config': project_data,
+                        'config': config_data,
                         'path': str(project_root)
                     }
                 else:

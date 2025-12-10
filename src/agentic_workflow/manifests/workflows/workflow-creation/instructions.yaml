@@ -523,7 +523,7 @@ instructions:
     - 'Run: python3 -m scripts.cli.workflow list-workflows'
     - 'Run: python3 -m scripts.validation.validate_agents'
     - 'Run: python3 -m scripts.generation.generate_agents --workflow <name>'
-    - 'Create test project: workflow init test_<name> --workflow <name>'
+    - 'Create test project: workflow init test_<name> --workflow <name> --description "Test project for <name>"'
     - Verify agent files generated correctly
     - 'Test CLI commands: status, activate, handoff, decision'
     - Document all issues found
@@ -537,7 +537,7 @@ instructions:
       - 'Run: python3 -m scripts.cli.workflow list-workflows'
       - 'Run: python3 -m scripts.validation.validate_agents'
       - 'Run: python3 -m scripts.generation.generate_agents --workflow <name>'
-      - 'Create test project: workflow init test_<name> --workflow <name>'
+      - 'Create test project: workflow init test_<name> --workflow <name> --description "Test project for <name>"'
       - Verify agent files generated correctly
       - 'Test CLI commands: status, activate, handoff, decision'
       - Document all issues found
