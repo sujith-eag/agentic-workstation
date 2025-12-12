@@ -30,11 +30,12 @@ except ImportError:
     jsonschema = None
 
 from agentic_workflow.cli.utils import display_error, display_warning, display_info, display_success
+from agentic_workflow.generation.canonical_loader import load_canonical_workflow, get_canonical_dir
 
 # Resolve paths
-ROOT = Path(__file__).resolve().parents[2]
-CANONICAL_DIR = ROOT / "manifests" / "_canonical"
-SCHEMAS_DIR = ROOT / "manifests" / "_canonical_schemas"
+ROOT = Path(__file__).resolve().parents[3]
+CANONICAL_DIR = get_canonical_dir()
+SCHEMAS_DIR = ROOT / "src" / "agentic_workflow" / "manifests" / "_canonical_schemas"
 
 # ID patterns - aligned with schema: 1-2 uppercase letters, hyphen, 2-6 alphanumeric
 AGENT_ID_PATTERN = re.compile(r"^[A-Z]{1,2}-[A-Z0-9]{2,6}$")
@@ -526,21 +527,16 @@ def detect_circular_dependencies(agents_data: Dict, result: ValidationResult):
 def validate_workflow(workflow_name: str) -> ValidationResult:
     """Run all validations for a workflow."""
     result = ValidationResult(workflow=workflow_name)
-    workflow_dir = CANONICAL_DIR / workflow_name
     
-    if not workflow_dir.exists():
-        result.add_error(f"Workflow directory not found: {workflow_dir}")
-        return result
-    
-    # Load all files
-    agents_data = load_json(workflow_dir / "agents.json")
-    artifacts_data = load_json(workflow_dir / "artifacts.json")
-    instructions_data = load_json(workflow_dir / "instructions.json")
-    workflow_data = load_json(workflow_dir / "workflow.json")
-    
-    # Check files exist
-    if agents_data is None:
-        result.add_error("agents.json not found")
+    try:
+        # Load all files using canonical loader
+        manifests = load_canonical_workflow(workflow_name)
+        agents_data = manifests["agents"]
+        artifacts_data = manifests["artifacts"]
+        instructions_data = manifests["instructions"]
+        workflow_data = manifests["workflow"]
+    except Exception as e:
+        result.add_error(f"Failed to load workflow manifests: {e}")
         return result
     
     # Schema validation
@@ -642,7 +638,7 @@ def main():
     passed = sum(1 for r in results if r.passed)
     failed = len(results) - passed
     display_success(f"Passed: {passed}")
-    display_error(f"Failed: {failed}")
+    display_info(f"Failed: {failed}")
     
     sys.exit(0 if all_passed else 1)
 

@@ -17,9 +17,7 @@ from ...core.exceptions import (
     handle_error, validate_required
 )
 from ...services import ProjectService
-from ...workflow import load_workflow
 from ..utils import display_action_result, display_info, display_error, display_warning, display_project_summary, shorten_path
-from agentic_workflow.core.paths import get_projects_dir
 
 logger = logging.getLogger(__name__)
 
@@ -33,97 +31,6 @@ class ProjectHandlers:
 
     def __init__(self):
         self.project_service = ProjectService()
-
-    def handle_init(
-        self,
-        name: str,
-        workflow: Optional[str] = None,
-        description: Optional[str] = None,
-        force: bool = False
-    ) -> None:
-        """
-        Handle project initialization command.
-
-        Args:
-            name: Project name (required)
-            workflow: Workflow type to use (default: 'planning')
-            description: Project description
-            force: Overwrite existing project if True
-
-        Raises:
-            ProjectError: If initialization fails
-        """
-        try:
-            validate_required(name, "name", "project_init")
-
-            project_name = name
-            workflow_type = workflow or 'planning'
-
-            logger.info(f"Initializing project '{project_name}' with workflow '{workflow_type}'")
-
-            # Validate project name (basic validation)
-            if not project_name.replace('-', '').replace('_', '').isalnum():
-                raise ProjectValidationError(
-                    "Invalid project name. Use only letters, numbers, hyphens, and underscores.",
-                    context={"project_name": project_name}
-                )
-
-            # Check if project already exists
-            if self.project_service.project_exists(project_name) and not force:
-                raise ProjectError(
-                    f"Project '{project_name}' already exists. Use --force to overwrite.",
-                    error_code="PROJECT_EXISTS",
-                    context={"project_name": project_name}
-                )
-
-            # Initialize project
-            result = self.project_service.initialize_project(
-                project_name=project_name,
-                workflow_type=workflow_type
-            )
-
-            # Create project configuration file
-            projects_dir = Path(self.project_service.config.get('directories', {}).get('projects', 'projects'))
-            project_path = projects_dir / project_name
-            config_file = project_path / 'agentic.toml'
-
-            project_config = {
-                'name': project_name,
-                'workflow': workflow_type,
-                'description': description or f"Agentic workflow project: {project_name}",
-                'created': str(Path.cwd()),
-                'version': '1.0.0',
-            }
-
-            # Write TOML format
-            toml_content = f"""name = "{project_config['name']}"
-workflow = "{project_config['workflow']}"
-description = "{project_config['description']}"
-created = "{project_config['created']}"
-version = "{project_config['version']}"
-"""
-            with open(config_file, 'w') as f:
-                f.write(toml_content)
-
-            # Display success with standardized formatting
-            directories = result.get('directories_created', [])
-
-            # Load workflow to get first agent information for next steps
-            wf = load_workflow(workflow_type)
-            first_agent_id = wf.pipeline_order[1] if len(wf.pipeline_order) > 1 else wf.pipeline_order[0]
-            first_agent = wf.get_agent(first_agent_id)
-            first_agent_name = first_agent.get('role', first_agent_id) if first_agent else first_agent_id
-
-            next_steps = [
-                f"cd {project_path}",
-                f"./workflow activate {first_agent_id}  # Start with {first_agent_name}",
-                "./workflow populate        # Generate agent files"
-            ]
-
-            display_project_summary(project_name, workflow_type, directories, next_steps)
-
-        except Exception as e:
-            handle_error(e, "project initialization", {"project_name": name})
 
     def handle_list(
         self,
@@ -269,3 +176,16 @@ version = "{project_config['version']}"
                 display_info(f"  Workflow: {project['workflow']}")
                 display_info(f"  Description: {project['description']}")
                 display_info("")
+
+    def handle_activate(self, agent_id: str) -> None:
+        """Handle agent activation."""
+        # TODO: Implement governance interceptor
+        display_info(f"Activated agent: {agent_id}")
+
+    def handle_handoff(self, to: str, artifacts: list) -> None:
+        """Handle handoff to next agent."""
+        display_info(f"Handoff to {to} with artifacts: {artifacts}")
+
+    def handle_end_session(self) -> None:
+        """Handle session end."""
+        display_info("Session ended")

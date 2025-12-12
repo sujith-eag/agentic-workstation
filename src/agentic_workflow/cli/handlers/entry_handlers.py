@@ -10,6 +10,7 @@ This allows the handlers to be used both from CLI (via Click) and programmatical
 
 from typing import Optional, List
 import logging
+from pathlib import Path
 
 from ...core.exceptions import CLIExecutionError, handle_error, validate_required
 from ...services import LedgerService
@@ -90,7 +91,7 @@ class EntryHandlers:
 
     def handle_decision(
         self,
-        project: str,
+        project: Optional[str],
         title: str,
         rationale: str,
         agent: Optional[str] = None
@@ -99,7 +100,7 @@ class EntryHandlers:
         Handle decision recording command.
 
         Args:
-            project: Project name (required)
+            project: Project name (optional, auto-detected in project context)
             title: Decision title (required)
             rationale: Decision rationale (required)
             agent: Agent ID (optional)
@@ -108,7 +109,15 @@ class EntryHandlers:
             CLIExecutionError: If decision recording fails
         """
         try:
-            validate_required(project, "project", "decision")
+            # Auto-detect project if not provided
+            if not project:
+                from ...core.config_service import ConfigurationService
+                config_service = ConfigurationService()
+                config = config_service.load_config()
+                if not config.is_project_context:
+                    raise CLIExecutionError("No project specified and not in project context")
+                project = Path.cwd().name  # Use current directory name
+
             validate_required(title, "title", "decision")
             validate_required(rationale, "rationale", "decision")
 

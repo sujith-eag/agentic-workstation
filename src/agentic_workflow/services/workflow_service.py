@@ -14,9 +14,11 @@ from ..core.exceptions import (
     validate_required
 )
 from ..core.config_service import ConfigurationService
-from ..workflow import load_workflow, list_workflows, WorkflowPackage
+from ..generation.canonical_loader import load_workflow, list_workflows, WorkflowPackage
 
 logger = logging.getLogger(__name__)
+
+__all__ = ["WorkflowService"]
 
 
 class WorkflowService:

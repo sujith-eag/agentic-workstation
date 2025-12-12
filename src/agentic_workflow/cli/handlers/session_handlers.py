@@ -17,7 +17,7 @@ from ...core.exceptions import (
     handle_error, validate_required, validate_path_exists
 )
 from ...services import ProjectService, WorkflowService
-from ..utils import display_success, display_project_summary
+from ..utils import display_success, display_project_summary, display_action_result, display_info
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,9 @@ class SessionHandlers:
     with Click commands. No argparse.Namespace conversion required.
     """
 
-    def __init__(self):
-        self.project_service = ProjectService()
+    def __init__(self, config=None):
+        self.config = config
+        self.project_service = ProjectService(config)
         self.workflow_service = WorkflowService()
 
     def handle_init(
@@ -59,35 +60,15 @@ class SessionHandlers:
 
             logger.info(f"Initializing project '{project}' with workflow '{workflow_type}'")
 
-            # Check if project already exists
-            if self.project_service.project_exists(project):
-                if not force:
-                    raise ProjectError(
-                        f"Project '{project}' already exists. Use --force to overwrite.",
-                        error_code="PROJECT_EXISTS",
-                        context={"project": project}
-                    )
-                logger.warning(f"Overwriting existing project '{project}'")
-
-            # Initialize project
-            result = self.project_service.initialize_project(
+            # Initialize project using ProjectService
+            result = self.project_service.init_project(
                 project_name=project,
-                workflow_type=workflow_type,
+                workflow_name=workflow_type,
                 description=description,
                 force=force
             )
-
+            
             logger.info(f"Successfully initialized project '{project}'")
-            display_success(f"Project '{project}' initialized successfully")
-            display_success(f"  - Workflow: {workflow_type}")
-            display_success(f"  - Agents: {result.get('agent_count', 0)}")
-            display_success(f"  - Directories: {result.get('directory_count', 0)}")
-
-            # Display detailed project summary
-            directories = result.get('directories_created', [
-                'agent_files', 'agent_context', 'agent_log', 
-                'artifacts', 'docs', 'input', 'package'
-            ])
             
             # Get the first agent to activate (second in pipeline after orchestrator)
             first_agent = "A-01"  # default fallback
@@ -100,11 +81,49 @@ class SessionHandlers:
                 pass  # Use default if workflow loading fails
             
             next_steps = [
-                f"cd projects/{project}",
+                f"cd \"{result.target_path}\"",
                 "./workflow status", 
                 f"./workflow activate {first_agent}"
             ]
+            
+            # Get directories from workflow manifest
+            directories = []
+            try:
+                manifest = self.workflow_service.get_workflow_manifest(workflow_type)
+                workflow_dirs = manifest.get('workflow', {}).get('directories', {})
+                
+                # Extract directory names (exclude 'root' and 'templates' which are special)
+                for key, value in workflow_dirs.items():
+                    if key not in ['root', 'templates'] and isinstance(value, str):
+                        # Remove any path prefixes like 'artifacts/', 'agent_files/', etc.
+                        dir_name = value.rstrip('/')
+                        directories.append(dir_name)
+            except Exception:
+                pass  # Use fallback if manifest loading fails
+            
+            # Fallback to default directories if none found
+            if not directories:
+                directories = [
+                    "agent_files",
+                    "agent_context", 
+                    "agent_log",
+                    "artifacts",
+                    "docs",
+                    "input",
+                    "package"
+                ]
+            
             display_project_summary(project, workflow_type, directories, next_steps)
+            
+            # Display success message after the summary table
+            display_success(f"Project '{project}' initialized successfully")
+            display_success(f"  - Workflow: {workflow_type}")
+            display_success(f"  - Location: {result.target_path}")
+            display_success(f"  - Created: {len(result.created_files)} files")
+            if result.updated_files:
+                display_success(f"  - Updated: {len(result.updated_files)} files")
+            if result.skipped_files:
+                display_info(f"  - Skipped: {len(result.skipped_files)} files")
 
         except Exception as e:
             handle_error(e, "project initialization", {"project": project})
@@ -139,30 +158,37 @@ class SessionHandlers:
 
             logger.info(f"Successfully refreshed project '{project}'")
             display_success(f"Project '{project}' refreshed successfully")
-            display_success(f"  - Updated agents: {result.get('updated_agents', 0)}")
-            display_success(f"  - Updated artifacts: {result.get('updated_artifacts', 0)}")
+            display_success(f"  - Created: {len(result.created_files)} files")
+            display_success(f"  - Updated: {len(result.updated_files)} files")
+            if result.skipped_files:
+                display_info(f"  - Skipped: {len(result.skipped_files)} files")
 
         except Exception as e:
             handle_error(e, "project refresh", {"project": project})
 
     def handle_activate(
         self,
-        project: str,
-        agent_id: str
+        agent_id: str,
+        project: Optional[str] = None
     ) -> None:
         """
         Handle agent activation command.
 
         Args:
-            project: Project name (required)
             agent_id: Agent ID to activate (required)
+            project: Project name (optional, auto-detected in project context)
 
         Raises:
             CLIExecutionError: If activation fails
         """
         try:
-            validate_required(project, "project", "activate")
             validate_required(agent_id, "agent_id", "activate")
+            
+            # Auto-detect project if not provided
+            if not project:
+                if not self.config or not self.config.is_project_context:
+                    raise CLIExecutionError("No project specified and not in project context")
+                project = Path.cwd().name  # Use current directory name
 
             logger.info(f"Activating agent '{agent_id}' in project '{project}'")
 
@@ -177,9 +203,21 @@ class SessionHandlers:
             result = self.project_service.activate_agent(project, agent_id)
 
             logger.info(f"Successfully activated agent '{agent_id}' in project '{project}'")
-            display_success(f"Agent '{agent_id}' activated in project '{project}'")
-            display_success(f"  - Role: {result.get('role', 'Unknown')}")
-            display_success(f"  - Session ID: {result.get('session_id', 'N/A')}")
+            
+            # Build status messages
+            status_lines = []
+            if result.get('stage_advanced'):
+                status_lines.append(f"Stage advanced: {result.get('previous_stage')} → {result.get('current_stage')}")
+            status_lines.extend([
+                f"Role: {result.get('role', 'Unknown')}", 
+                f"Session ID: {result.get('session_id', 'N/A')}"
+            ])
+            
+            display_action_result(
+                f"Agent '{agent_id}' activated in project '{project}'",
+                True,
+                status_lines
+            )
 
         except Exception as e:
             handle_error(e, "agent activation", {"project": project, "agent_id": agent_id})
@@ -213,9 +251,12 @@ class SessionHandlers:
             result = self.project_service.end_session(project)
 
             logger.info(f"Successfully ended session for project '{project}'")
-            display_success(f"Session ended for project '{project}'")
-            display_success(f"  - Archived agents: {result.get('archived_agents', 0)}")
-            display_success(f"  - Final status: {result.get('status', 'completed')}")
+            display_action_result(
+                f"Session ended for project '{project}'",
+                True,
+                [f"Archived agents: {result.get('archived_agents', 0)}", 
+                 f"Final status: {result.get('status', 'completed')}"]
+            )
 
         except Exception as e:
             handle_error(e, "session end", {"project": project})
@@ -245,13 +286,17 @@ class SessionHandlers:
                     context={"project": project}
                 )
 
-            # Populate frontmatter
-            result = self.project_service.populate_frontmatter(project)
+            # Populate frontmatter (now handled by refresh_project with agents=True)
+            success = self.project_service.refresh_project(project, agents=True, docs=False, index=False, github=False, session=False)
+
+            if not success:
+                raise ProjectError(f"Failed to refresh agent files for project '{project}'")
 
             logger.info(f"Successfully populated frontmatter for project '{project}'")
-            display_success(f"Agent frontmatter populated for project '{project}'")
-            display_success(f"  - Processed agents: {result.get('processed_agents', 0)}")
-            display_success(f"  - Updated files: {result.get('updated_files', 0)}")
+            display_action_result(
+                f"Agent frontmatter populated for project '{project}'",
+                True
+            )
 
         except Exception as e:
             handle_error(e, "frontmatter population", {"project": project})
@@ -290,7 +335,7 @@ class SessionHandlers:
             self.project_service.remove_project(project)
 
             logger.info(f"Successfully deleted project '{project}'")
-            display_success(f"Project '{project}' deleted successfully")
+            display_action_result(f"Project '{project}' deleted successfully", True)
 
         except Exception as e:
             handle_error(e, "project deletion", {"project": project})

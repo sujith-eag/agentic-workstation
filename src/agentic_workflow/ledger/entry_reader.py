@@ -15,6 +15,17 @@ from agentic_workflow.ledger.section_ops import (
 from agentic_workflow.core.paths import PROJECTS_DIR
 
 
+def _get_projects_dir():
+    """Get the actual projects directory from config."""
+    try:
+        from agentic_workflow.core.config_service import ConfigurationService
+        config = ConfigurationService().load_config()
+        return config.system.default_workspace
+    except:
+        # Fallback
+        return PROJECTS_DIR
+
+
 def _get_yaml_path(project_dir: Path, log_type: str) -> Path:
     """Get YAML path for a log type."""
     if log_type == "exchange":
@@ -52,7 +63,8 @@ def get_handoffs(project_name: str, status: str = None,
     Returns:
         List of handoff dicts
     """
-    project_dir = PROJECTS_DIR / project_name
+    projects_dir = _get_projects_dir()
+    project_dir = projects_dir / project_name
     yaml_path = _get_yaml_path(project_dir, "exchange")
     
     entries = read_yaml_section(yaml_path, "handoffs")
@@ -73,7 +85,8 @@ def get_handoffs(project_name: str, status: str = None,
 
 def get_handoff_by_id(project_name: str, handoff_id: str) -> dict:
     """Get a specific handoff by ID."""
-    project_dir = PROJECTS_DIR / project_name
+    projects_dir = _get_projects_dir()
+    project_dir = projects_dir / project_name
     yaml_path = _get_yaml_path(project_dir, "exchange")
     return find_entry_in_yaml(yaml_path, "handoffs", handoff_id)
 
@@ -87,7 +100,8 @@ def get_feedback(project_name: str, status: str = None,
                  target: str = None, severity: str = None,
                  limit: int = None) -> list:
     """Get feedback entries from exchange_log."""
-    project_dir = PROJECTS_DIR / project_name
+    projects_dir = _get_projects_dir()
+    project_dir = projects_dir / project_name
     yaml_path = _get_yaml_path(project_dir, "exchange")
     
     entries = read_yaml_section(yaml_path, "feedback")
@@ -112,7 +126,8 @@ def get_open_feedback(project_name: str, target: str = None) -> list:
 
 def get_iterations(project_name: str, limit: int = None) -> list:
     """Get iteration entries from exchange_log."""
-    project_dir = PROJECTS_DIR / project_name
+    projects_dir = _get_projects_dir()
+    project_dir = projects_dir / project_name
     yaml_path = _get_yaml_path(project_dir, "exchange")
     
     entries = read_yaml_section(yaml_path, "iterations")
@@ -128,7 +143,8 @@ def get_iterations(project_name: str, limit: int = None) -> list:
 def get_sessions(project_name: str, agent_id: str = None,
                  status: str = None, limit: int = None) -> list:
     """Get session entries from context_log."""
-    project_dir = PROJECTS_DIR / project_name
+    projects_dir = _get_projects_dir()
+    project_dir = projects_dir / project_name
     yaml_path = _get_yaml_path(project_dir, "context")
     
     entries = read_yaml_section(yaml_path, "sessions")
@@ -146,7 +162,8 @@ def get_sessions(project_name: str, agent_id: str = None,
 
 def get_active_session(project_name: str) -> dict:
     """Get the current active session from active_session.md frontmatter."""
-    project_dir = PROJECTS_DIR / project_name
+    projects_dir = _get_projects_dir()
+    project_dir = projects_dir / project_name
     active_session_path = project_dir / "agent_context" / "active_session.md"
     
     if not active_session_path.exists():
@@ -179,7 +196,8 @@ def get_active_session(project_name: str) -> dict:
 def get_decisions(project_name: str, agent: str = None,
                   scope: str = None, limit: int = None) -> list:
     """Get decision entries from context_log."""
-    project_dir = PROJECTS_DIR / project_name
+    projects_dir = _get_projects_dir()
+    project_dir = projects_dir / project_name
     yaml_path = _get_yaml_path(project_dir, "context")
     
     entries = read_yaml_section(yaml_path, "decisions")
@@ -198,7 +216,8 @@ def get_decisions(project_name: str, agent: str = None,
 def get_assumptions(project_name: str, agent: str = None,
                     status: str = None, limit: int = None) -> list:
     """Get assumption entries from context_log."""
-    project_dir = PROJECTS_DIR / project_name
+    projects_dir = _get_projects_dir()
+    project_dir = projects_dir / project_name
     yaml_path = _get_yaml_path(project_dir, "context")
     
     entries = read_yaml_section(yaml_path, "assumptions")
@@ -222,7 +241,8 @@ def get_active_assumptions(project_name: str) -> list:
 def get_blockers(project_name: str, status: str = None,
                  blocked_agent: str = None, limit: int = None) -> list:
     """Get blocker entries from context_log."""
-    project_dir = PROJECTS_DIR / project_name
+    projects_dir = _get_projects_dir()
+    project_dir = projects_dir / project_name
     yaml_path = _get_yaml_path(project_dir, "context")
     
     entries = read_yaml_section(yaml_path, "blockers")

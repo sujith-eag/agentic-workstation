@@ -181,24 +181,21 @@ def main():
             workflow = sys.argv[idx + 1]
     
     workflow_dir = os.path.join(WORKFLOWS_DIR, workflow)
-    agents_path = os.path.join(workflow_dir, 'agents.yaml')
-    artifacts_path = os.path.join(workflow_dir, 'artifacts.yaml')
     
-    if not os.path.exists(workflow_dir):
-        display_error(f"Workflow '{workflow}' not found at {workflow_dir}")
-        sys.exit(3)
-    
-    if not os.path.exists(agents_path):
-        display_error(f"agents.yaml not found at {agents_path}")
-        sys.exit(3)
-    
-    if not os.path.exists(artifacts_path):
-        display_error(f"artifacts.yaml not found at {artifacts_path}")
+    # Check if workflow exists using canonical loader
+    from agentic_workflow.generation.canonical_loader import list_canonical_workflows
+    available_workflows = list_canonical_workflows()
+    if workflow not in available_workflows:
+        display_error(f"Workflow '{workflow}' not found. Available: {', '.join(available_workflows)}")
         sys.exit(3)
 
     try:
-        agents_data = load_yaml_file(agents_path)
-        artifacts_data = load_yaml_file(artifacts_path)
+        # Use canonical loader instead of direct file access
+        from agentic_workflow.generation.canonical_loader import load_canonical_workflow
+        manifests = load_canonical_workflow(workflow)
+        agents_data = {'agents': manifests.get('agents', {}).get('agents', [])}
+        artifacts_data = {'artifacts': manifests.get('artifacts', {}).get('artifacts', []), 
+                         'logs': manifests.get('artifacts', {}).get('logs', [])}
     except Exception as e:
         display_error(f"Error loading manifests: {e}")
         sys.exit(1)

@@ -11,7 +11,7 @@ import datetime
 from typing import Optional
 
 from agentic_workflow.workflow import WorkflowPackage
-from agentic_workflow.utils.jinja_loader import JinjaTemplateLoader
+from agentic_workflow.utils.templating import TemplateEngine
 
 
 def generate_project_index(project_name: str, wf: WorkflowPackage) -> str:
@@ -47,7 +47,7 @@ def generate_project_index(project_name: str, wf: WorkflowPackage) -> str:
         })
     
     # Render with Jinja2
-    loader = JinjaTemplateLoader(workflow=wf.name)
+    loader = TemplateEngine(workflow=wf.name)
     context = {
         'project_name': project_name,
         'workflow_name': wf.name,

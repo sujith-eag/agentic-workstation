@@ -22,7 +22,7 @@ from typing import Dict, Any, Optional, Union, List
 from dataclasses import dataclass
 import logging
 
-from .config import find_project_root, find_repo_root
+from .config_service import find_project_root, find_repo_root
 
 # Setup logging
 logger = logging.getLogger(__name__)

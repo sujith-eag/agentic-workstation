@@ -44,19 +44,19 @@ from .io import (
     write_file,
     ensure_parent_dir,
 )
-from .config import (
-    get_config_for_command,
-    load_app_config,
-    load_project_config,
-    merge_configs,
-    validate_config,
-    save_project_config,
-    ConfigError,
-    ConfigNotFoundError,
-    ConfigValidationError,
-    ConfigMergeError,
-    ValidationResult,
-)
+# from .config import (
+#     get_config_for_command,
+#     load_app_config,
+#     load_project_config,
+#     merge_configs,
+#     validate_config,
+#     save_project_config,
+#     ConfigError,
+#     ConfigNotFoundError,
+#     ConfigValidationError,
+#     ConfigMergeError,
+#     ValidationResult,
+# )
 from .path_resolution import (
     resolve_path,
     resolve_config_paths,

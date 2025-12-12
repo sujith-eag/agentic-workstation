@@ -1,21 +1,36 @@
+"""
+Session Manager.
+
+Manages the active session state, agent context switching, and project status updates.
+"""
+
 import datetime
 import re
 import yaml
+import logging
 from pathlib import Path
-from typing import Optional, Tuple, Any, Dict
+from typing import Tuple, Dict, Optional
+
+from ..core.project import load_project_meta
+from ..core.exceptions import AgentNotFoundError, ProjectNotFoundError, WorkflowError
+from ..generation.canonical_loader import load_workflow
+from ..session import session_frontmatter as sf
 
 from agentic_workflow.core.paths import AGENT_FILES_DIR
 from agentic_workflow.core.project import load_project_meta
 from agentic_workflow.session import session_frontmatter as sf
 from agentic_workflow.exceptions import AgentNotFoundError, ProjectNotFoundError
-from agentic_workflow.cli.utils import display_info, display_success
+
+logger = logging.getLogger(__name__)
 
 try:
-    from agentic_workflow.utils.jinja_loader import render_session
+    from ..utils.templating import TemplateEngine, ContextResolver
     JINJA2_AVAILABLE = True
 except ImportError:
     JINJA2_AVAILABLE = False
-    render_session = None
+    TemplateEngine = None
+    ContextResolver = None
+
 
 
 class SessionManager:
@@ -29,34 +44,48 @@ class SessionManager:
 
     def get_workflow_name(self) -> str:
         """Get the workflow name for a project from its metadata."""
-        project_name = self.project_dir.name
-        meta = load_project_meta(project_name)
+        meta = load_project_meta(self.project_name)
         if meta and 'workflow' in meta:
             return meta['workflow']
-        return 'planning' # Default fallback
+        # Fallback: check config.yaml directly if meta load fails (though load_project_meta should handle this)
+        return 'planning'
 
     def activate_agent(self, agent_id: str) -> None:
         """Activates an agent session."""
-        display_info(f"Activating Agent {agent_id} in {self.project_name}...")
+        workflow_name = self.get_workflow_name()
+        logger.info(f"Activating Agent {agent_id} in {self.project_name} ({workflow_name})...")
 
-        # Normalize ID
-        agent_id_formatted = self._normalize_agent_id(agent_id)
+        # 1. Load Workflow Package (The Source of Truth)
+        try:
+            wf = load_workflow(workflow_name)
+        except WorkflowError as e:
+            raise ProjectNotFoundError(f"Could not load workflow '{workflow_name}': {e}")
 
-        # Load Content
-        content, filename, source_dir = self._load_agent_content(agent_id)
-        display_info(f"Loaded agent from {source_dir / filename}")
-
-        # Parse Frontmatter
-        frontmatter, body = self._parse_agent_content(content)
-
-        # Update Session File
-        self._update_active_session_file(agent_id_formatted)
-
-        # Update Project Index
-        agent_title = frontmatter.get('title', frontmatter.get('agent_role', f"Agent {agent_id_formatted}"))
-        self._update_project_index(agent_title)
+        # 2. Normalize ID using Workflow Rules
+        # The workflow package knows if it should be 'A-01', 'A01', or 'I-1'
+        agent_id_formatted = wf.format_agent_id(agent_id)
         
-        display_success("Activation complete.")
+        # 3. Find Agent Definition
+        agent_def = wf.get_agent(agent_id_formatted)
+        if not agent_def:
+            raise AgentNotFoundError(f"Agent '{agent_id}' (normalized: {agent_id_formatted}) not defined in workflow '{workflow_name}'")
+
+        # 4. Load Content Deterministically
+        content, filename = self._load_agent_file(agent_def, wf)
+        logger.info(f"Loaded agent from {filename}")
+
+        # 5. Parse Frontmatter (for title/role)
+        frontmatter, _ = self._parse_agent_content(content)
+        agent_role = frontmatter.get('agent_role', agent_def.get('role', 'Unknown'))
+        
+        # 6. Update Session File
+        self._update_active_session_file(agent_id_formatted, workflow_name)
+
+        # 7. Update Project Index
+        agent_display = f"{agent_id_formatted} ({agent_role})"
+        self._update_project_index(agent_display)
+        
+        logger.info(f"Activation complete: {agent_display}")
 
     def _normalize_agent_id(self, agent_id_raw: str) -> str:
         if agent_id_raw.lower() == 'a00' or agent_id_raw.lower() == 'orch':
@@ -68,90 +97,105 @@ class SessionManager:
         else:
             return agent_id_raw
 
-    def _load_agent_content(self, agent_id: str) -> Tuple[str, str, Path]:
-        """Finds and loads the agent file by ID."""
-        raw_id = str(agent_id).upper().lstrip('A').lstrip('0') or '0'
+    def _load_agent_file(self, agent_def: Dict, wf) -> Tuple[str, str]:
+        """
+        Load the agent file from the project directory.
+        Constructs the filename using the standard naming convention.
+        """
+        # Reconstruct filename logic to match what InitPipeline/Structure created
+        # Standard: {ID}_{Role}.md (sanitized)
+        agent_id = agent_def.get('id')
+        role = agent_def.get('role', agent_def.get('slug', 'agent'))
         
-        patterns = []
-        if raw_id == '0' or raw_id.lower() == 'orch':
-            patterns = ['Orchestrator_prompt.md', 'A00_', 'A-00_']
-        else:
-            patterns = [
-                f"A{raw_id}_",           # A1_
-                f"A{raw_id.zfill(2)}_",  # A01_
-                f"A-{raw_id}_",          # A-1_
-                f"A-{raw_id.zfill(2)}_", # A-01_
-            ]
+        # We need to match the filename generation logic from generate_agents.py
+        # Assuming simple sanitation here or looking for partial match if strict name is unknown
+        
+        # 1. Try exact standard name first
+        filename = f"{agent_id}_{role}.md"
+        # Sanitize filename (basic)
+        filename = filename.replace(" ", "_").replace("/", "-")
+        
+        target_file = self.project_dir / 'agent_files' / filename
+        
+        if target_file.exists():
+            return target_file.read_text(encoding='utf-8'), target_file.name
 
-        search_dirs = []
-        
-        # 1. Project-local agent_files
-        project_agents_dir = self.project_dir / 'agent_files'
-        if project_agents_dir.exists():
-            search_dirs.append(project_agents_dir)
-        
-        # 2. Global workflow-specific agent_files
-        workflow_name = self.get_workflow_name()
-        # Note: In Phase 1 we will rely on canonical_loader, but for now reuse AGENT_FILES_DIR
-        # Use AGENT_FILES_DIR from paths (which points to root/agent_files currently)
-        # Ideally we should look into manifests, but keeping compat with existing structure for Phase 0
-        workflow_agents_dir = AGENT_FILES_DIR / workflow_name
-        if workflow_agents_dir.exists():
-            search_dirs.append(workflow_agents_dir)
-            
-        # Search
-        for search_dir in search_dirs:
-            for f in search_dir.glob("*.md"):
-                for pattern in patterns:
-                    if f.name.startswith(pattern) or f.name == pattern:
-                        with open(f, "r") as file:
-                            return file.read(), f.name, search_dir
-        
-        # Fallback regex search
-        for search_dir in search_dirs:
-            for f in search_dir.glob("*.md"):
-                with open(f, "r") as file:
-                    content = file.read()
-                    if re.search(f"agent_id: ['\"]?{raw_id}['\"]?", content) or \
-                       re.search(f"agent_id: {agent_id}", content):
-                        return content, f.name, search_dir
+        # 2. Try without dash (legacy format)
+        alt_filename = f"{agent_id.replace('-', '')}_{role}.md".replace(" ", "_").replace("/", "-")
+        alt_file = self.project_dir / 'agent_files' / alt_filename
+        if alt_file.exists():
+            return alt_file.read_text(encoding='utf-8'), alt_file.name
 
-        raise AgentNotFoundError(f"Agent {agent_id} not found in project or workflow '{workflow_name}'")
+        # 3. Fallback: Search by ID prefix if exact name doesn't match
+        # (Handles cases where role name might have different spacing/sanitization)
+        search_dir = self.project_dir / 'agent_files'
+        if search_dir.exists():
+            for f in search_dir.glob("*.md"):
+                if f.name.startswith(f"{agent_id}_") or f.name.startswith(f"{agent_id.replace('-', '')}_"):
+                    return f.read_text(encoding='utf-8'), f.name
+
+        raise AgentNotFoundError(
+            f"Agent file for '{agent_id}' not found in {search_dir}. "
+            f"Expected '{filename}' or '{alt_filename}' or '{agent_id}_*.md'"
+        )
 
     def _parse_agent_content(self, content: str) -> Tuple[Dict, str]:
+        """Extract YAML frontmatter and body."""
         fm_match = re.search(r"^---\n(.*?)\n---", content, re.DOTALL)
         frontmatter = yaml.safe_load(fm_match.group(1)) if fm_match else {}
         body_match = re.search(r"\n---\n(.*)", content, re.DOTALL)
         body = body_match.group(1).strip() if body_match else content
         return frontmatter, body
 
-    def _update_active_session_file(self, agent_id: str) -> None:
+    def _update_active_session_file(self, agent_id: str, workflow_name: str) -> None:
+        """Render and write the active session file."""
         session_path = self.project_dir / "agent_context" / "active_session.md"
         session_path.parent.mkdir(parents=True, exist_ok=True)
         
-        workflow_name = self.get_workflow_name()
-        
         if not JINJA2_AVAILABLE:
-             raise ImportError("Jinja2 is required")
+             raise ImportError("Jinja2 is required for session rendering")
              
-        content = render_session(
+        engine = TemplateEngine(workflow=workflow_name)
+        resolver = ContextResolver()
+        context = resolver.get_session_context(
             workflow=workflow_name,
             agent_id=agent_id,
             project_name=self.project_name,
             timestamp=datetime.datetime.now().isoformat()
         )
+        content = engine.render("_base/session_base.md.j2", context)
         sf.write_session_file(session_path, content)
 
+
     def _update_project_index(self, agent_role: str) -> None:
+        """Update the status line in project_index.md."""
         index_path = self.project_dir / "project_index.md"
         if not index_path.exists():
+            logger.warning("project_index.md not found, skipping status update")
             return
             
-        with open(index_path, "r") as f:
-            content = f.read()
+        try:
+            content = index_path.read_text(encoding='utf-8')
             
-        content = re.sub(r"\*\*Active Agent:\*\* .*", f"**Active Agent:** {agent_role}", content)
-        content = re.sub(r"\*\*Last Action:\*\* .*", f"**Last Action:** Session started for {agent_role}", content)
-        
-        with open(index_path, "w") as f:
-            f.write(content)
+            # Update Active Agent line
+            # Pattern matches "**Active Agent:** <anything up to newline>"
+            if "**Active Agent:**" in content:
+                content = re.sub(
+                    r"\*\*Active Agent:\*\*.*", 
+                    f"**Active Agent:** {agent_role}", 
+                    content
+                )
+            
+            # Update Last Action line
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            if "**Last Action:**" in content:
+                content = re.sub(
+                    r"\*\*Last Action:\*\*.*", 
+                    f"**Last Action:** Session started ({timestamp})", 
+                    content
+                )
+            
+            index_path.write_text(content, encoding='utf-8')
+            
+        except Exception as e:
+            logger.error(f"Failed to update project index: {e}")

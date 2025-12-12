@@ -13,7 +13,8 @@ import logging
 
 from ...core.exceptions import CLIExecutionError, handle_error, validate_required
 from ...services import WorkflowService
-from ..utils import display_action_result, display_info, display_error, display_help_panel
+from ...session.stage_manager import set_stage
+from ..utils import display_action_result, display_info, display_error, display_help_panel, display_success
 
 logger = logging.getLogger(__name__)
 
@@ -183,12 +184,12 @@ class WorkflowHandlers:
             validate_required(project, "project", "set_stage")
             validate_required(stage, "stage", "set_stage")
 
-            # Placeholder - implement stage setting logic
-            logger.info(f"Setting stage to '{stage}' for project '{project}'")
-            display_action_result(
-                action=f"Stage set to '{stage}' for project '{project}'",
-                success=True
-            )
+            result = set_stage(project, stage)
+            
+            if result['success']:
+                display_success(f"Stage changed: {result.get('previous', 'None')} → {result['current']}")
+            else:
+                display_error(f"Failed to set stage: {result['error']}")
 
         except Exception as e:
             handle_error(e, "stage setting", {"project": project, "stage": stage})

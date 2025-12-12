@@ -3,6 +3,24 @@ from pathlib import Path
 from typing import Optional, List
 from importlib import resources
 
+__all__ = [
+    # Package Paths (where code lives)
+    "get_package_root",
+    "get_manifests_dir",
+    "get_templates_dir", 
+    "get_schemas_dir",
+    
+    # Project Paths (where user data lives)
+    "get_projects_dir",
+    "get_agent_files_dir",
+    "get_workflow_search_paths",
+    
+    # Backward Compatibility
+    "PROJECTS_DIR",
+    "AGENT_FILES_DIR",
+]
+
+
 def get_package_root() -> Path:
     """Get package root via resources."""
     try:
@@ -15,12 +33,7 @@ def get_package_root() -> Path:
 
 def get_manifests_dir() -> Path:
     """Get manifests directory."""
-    try:
-        from ..generation.canonical_loader import get_canonical_dir
-        return get_canonical_dir()
-    except Exception:
-        # Fallback
-        return get_package_root() / "manifests"
+    return get_package_root() / "manifests"
 
 def get_templates_dir() -> Path:
     """Get templates directory."""
@@ -31,17 +44,13 @@ def get_templates_dir() -> Path:
 
 def get_schemas_dir() -> Path:
     """Get schemas directory."""
-    try:
-        from ..generation.canonical_loader import get_schema_dir
-        return get_schema_dir()
-    except Exception:
-        return get_package_root() / "schemas"
+    return get_package_root() / "schemas"
 
 def get_projects_dir() -> Path:
-    """Get projects directory (always relative to repo root)."""
+    """Get projects directory (workspace root - parent of repo root)."""
     from .path_resolution import find_repo_root
     repo_root = find_repo_root()
-    return repo_root / "projects"
+    return repo_root.parent
 
 def get_agent_files_dir() -> Path:
     """Get global agent files directory."""

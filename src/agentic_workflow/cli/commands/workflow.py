@@ -39,9 +39,12 @@ def workflow():
 @click.option('--workflow', '-w', 'workflow_type', default='planning', help='Workflow type')
 @click.option('--description', '-d', help='Project description')
 @click.option('--force', '-f', is_flag=True, help='Overwrite existing project')
-def init(project: str, workflow_type: str, description: str, force: bool):
+@click.pass_context
+def init(ctx: click.Context, project: str, workflow_type: str, description: str, force: bool):
     """Initialize a workflow in a new project."""
     try:
+        config = ctx.obj.get('config')
+        _session_handlers.config = config  # Set config on the handler
         _session_handlers.handle_init(
             project=project,
             workflow=workflow_type,
@@ -103,27 +106,6 @@ def delete(project: str, force: bool):
 # ============================================================================
 # Entry Commands
 # ============================================================================
-
-@workflow.command()
-@click.argument('project')
-@click.option('--from', 'from_agent', required=True, help='Source agent ID')
-@click.option('--to', 'to_agent', required=True, help='Target agent ID')
-@click.option('--artifacts', help='Comma-separated artifact list')
-@click.option('--notes', help='Handoff notes')
-def handoff(project: str, from_agent: str, to_agent: str,
-           artifacts: Optional[str], notes: Optional[str]):
-    """Record an agent handoff."""
-    try:
-        _entry_handlers.handle_handoff(
-            project=project,
-            from_agent=from_agent,
-            to_agent=to_agent,
-            artifacts=artifacts,
-            notes=notes
-        )
-    except Exception as e:
-        display_error(str(e))
-
 
 @workflow.command()
 @click.argument('project')
@@ -200,6 +182,89 @@ def list_workflows():
     """List available workflows."""
     try:
         _workflow_handlers.handle_list_workflows()
+    except Exception as e:
+        display_error(str(e))
+
+
+# ============================================================================
+# Context-Aware Commands (Available when inside a project)
+# ============================================================================
+
+@click.command()
+@click.argument('agent_id')
+@click.pass_context
+def activate(ctx: click.Context, agent_id: str):
+    """Activate an agent session (requires project context)."""
+    config = ctx.obj.get('config')
+    if not config or not config.is_project_context:
+        display_error("This command requires project context. Run from within a project directory.")
+        return
+    
+    try:
+        _session_handlers.config = config  # Set config on the handler
+        _session_handlers.handle_activate(agent_id=agent_id)
+    except Exception as e:
+        display_error(str(e))
+
+
+@click.command()
+@click.option('--from', 'from_agent', help='Source agent ID')
+@click.option('--to', required=True, help='Target agent ID')
+@click.option('--artifacts', help='Comma-separated artifact names')
+@click.pass_context
+def handoff(ctx: click.Context, from_agent: str, to: str, artifacts: str):
+    """Handoff to next agent (requires project context)."""
+    config = ctx.obj.get('config')
+    if not config or not config.is_project_context:
+        display_error("This command requires project context. Run from within a project directory.")
+        return
+    
+    try:
+        # Determine from_agent if not provided
+        if not from_agent:
+            from ...ledger.entry_reader import get_active_session
+            active_session = get_active_session(config.project.root_path.name)
+            from_agent = active_session.get('agent_id') if active_session else None
+        if not from_agent:
+            display_error("No from_agent specified and no active session found")
+            return
+        
+        _entry_handlers.handle_handoff(
+            project=config.project.root_path.name,
+            from_agent=from_agent,
+            to_agent=to,
+            artifacts=artifacts
+        )
+    except Exception as e:
+        display_error(str(e))
+
+
+@click.command()
+@click.pass_context
+def status(ctx: click.Context):
+    """Show current project status (requires project context)."""
+    config = ctx.obj.get('config')
+    if not config or not config.is_project_context:
+        display_error("This command requires project context. Run from within a project directory.")
+        return
+    
+    try:
+        _query_handlers.handle_status()
+    except Exception as e:
+        display_error(str(e))
+
+
+@click.command()
+@click.pass_context
+def end_session(ctx: click.Context):
+    """End the current session (requires project context)."""
+    config = ctx.obj.get('config')
+    if not config or not config.is_project_context:
+        display_error("This command requires project context. Run from within a project directory.")
+        return
+    
+    try:
+        _session_handlers.handle_end_session()
     except Exception as e:
         display_error(str(e))
 

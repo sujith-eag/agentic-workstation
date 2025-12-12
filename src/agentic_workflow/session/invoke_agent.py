@@ -8,25 +8,28 @@ CLI and internal scripts.
 from __future__ import annotations
 import yaml
 import sys
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Any
 
-from agentic_workflow.workflow.canonical import load_agents_json, load_instructions_json
 from agentic_workflow.core.project import load_project_meta
-from agentic_workflow.core.paths import WORKFLOWS_DIR, PROJECTS_DIR
-from agentic_workflow.cli.utils import display_success, display_error, display_info
+from agentic_workflow.core.paths import PROJECTS_DIR
+
+logger = logging.getLogger(__name__)
+
+__all__ = ["load_workflow_agents", "get_on_demand_agent", "load_workflow_instructions", "get_agent_instructions", "generate_on_demand_session", "invoke_on_demand"]
 
 
 def load_workflow_agents(workflow_name: str) -> Optional[Dict]:
-    agents_json = load_agents_json(workflow_name)
-    if agents_json:
-        return agents_json
-    agents_file = WORKFLOWS_DIR / workflow_name / "agents.yaml"
-    if not agents_file.exists():
-        return None
-    with open(agents_file, "r") as f:
-        return yaml.safe_load(f)
+    from ..generation.canonical_loader import load_workflow
+    wf = load_workflow(workflow_name)
+    agents = wf.agents
+    on_demand = [a for a in agents if a.get('mode') == 'on_demand'] or []
+    return {
+        "agents": agents,
+        "on_demand": on_demand
+    }
 
 
 def get_on_demand_agent(workflow_name: str, agent_id: str) -> Optional[Dict]:
@@ -41,14 +44,9 @@ def get_on_demand_agent(workflow_name: str, agent_id: str) -> Optional[Dict]:
 
 
 def load_workflow_instructions(workflow_name: str) -> Optional[Dict]:
-    instr_json = load_instructions_json(workflow_name)
-    if instr_json:
-        return instr_json
-    instr_file = WORKFLOWS_DIR / workflow_name / "instructions.yaml"
-    if not instr_file.exists():
-        return None
-    with open(instr_file, "r") as f:
-        return yaml.safe_load(f)
+    from ..generation.canonical_loader import load_workflow
+    wf = load_workflow(workflow_name)
+    return wf.instructions
 
 
 def get_agent_instructions(workflow_name: str, agent_id: str) -> str:
@@ -146,17 +144,3 @@ def invoke_on_demand(project_name: str, agent_id: str, reason: Optional[str] = N
     except Exception:
         pass
     return {"success": True, "session_file": str(session_file), "agent_id": agent_id, "agent_role": agent_config.get("role")}
-
-
-if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        display_error("Usage: python invoke_agent.py <project> <agent_id> [reason]")
-        sys.exit(1)
-    reason = sys.argv[3] if len(sys.argv) > 3 else None
-    res = invoke_on_demand(sys.argv[1], sys.argv[2], reason)
-    if res.get("success"):
-        display_success(f"Invoked: {res['agent_id']} ({res.get('agent_role')})")
-        display_info(f"Session: {res['session_file']}")
-    else:
-        display_error(f"Failed: {res.get('error')}")
-        sys.exit(1)

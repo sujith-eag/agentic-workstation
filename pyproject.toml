@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentic-workstation"
-version = "1.0.3"
+version = "1.0.4"
 description = "Multi-agent planning and workflow orchestration system"
 readme = "README.md"
 license = "MIT"
@@ -24,6 +24,7 @@ dependencies = [
     "toml>=0.10.0",          # Fallback TOML support
     "tomli>=1.2.0",          # TOML reading for Python <3.11
     "platformdirs>=3.0.0",   # Cross-platform user dirs
+    "pydantic>=2.0.0",       # Type-safe configuration models
 ]
 
 [project.optional-dependencies]

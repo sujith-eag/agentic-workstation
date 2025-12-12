@@ -1,11 +1,11 @@
-# Agentic Workstation (Beta Release)
+# Agentic Workflow OS
 
 > **Structured Architectural Scaffolding for AI Development**
 
-[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)](https://github.com/sujith-eag/agentic-workstation)
+[![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**Agentic Workstation** is a development platform that orchestrates Multi-Agent Systems to plan, architect, and implement complex software projects. Unlike "Chat with Code" tools that rely on messy, unstructured conversation history, this system enforces a **Context-First** philosophy. It treats Agent Context as a file-system state machine, ensuring that your AI Engineer knows exactly what your AI Architect decided.
+**Agentic Workflow OS** is a development platform that orchestrates Multi-Agent Systems to plan, architect, and implement complex software projects. Unlike "Chat with Code" tools that rely on messy, unstructured conversation history, this system enforces a **Context-First** philosophy. It treats Agent Context as a file-system state machine, ensuring that your AI Engineer knows exactly what your AI Architect decided.
 
 ---
 
@@ -15,7 +15,7 @@ Most AI coding tools suffer from **Context Drift**. After 20 messages, the AI fo
 
 AI for projects and work is like a rocket: it gives a quick boost of velocity if you have direction, but soon everyone realizes it's only a first-stage booster that stops midway once context is off. The velocity drops, and to carry forward and build production-grade applications needs a 2nd and 3rd stage booster with precision guidance to reach and stay in orbit. **This project is that 2nd and 3rd stage.**
 
-**Agentic Workstation solves this by:**
+**Agentic Workflow OS solves this by:**
 1.  **Strict Role Separation:** Agents have clearly defined roles with explicit boundaries - architects handle specifications, engineers handle implementation, with enforced separation to prevent scope creep.
 2.  **Artifact-Driven Handoffs:** Agents cannot proceed until they receive specific, validated artifacts from predecessors, ensuring dependencies are met before progression.
 3.  **Programmatic Agent Interaction:** Agents operate in environments with terminal access, using CLI tools to search project state, log decisions, record handoffs, and progress through workflow stages - enabling structured, auditable AI collaboration without conversational drift.
@@ -46,15 +46,14 @@ source myproject-env\Scripts\activate
 pip install agentic-workstation
 
 # Verify installation
-agentic --version
-agentic workflow list
-agentic tui --help
+agentic --help
+agentic list-workflows
 ```
 
 **Option B: From Source (Development)**
 ```bash
-git clone https://github.com/sujith-eag/agentic-workstation.git
-cd agentic-workstation
+git clone https://github.com/sujith-eag/agentic_workflow.git
+cd agentic_workflow
 pip install -e .
 ```
 
@@ -76,15 +75,24 @@ docker rm $(docker ps -aq --filter ancestor=agentic-workstation)
 
 ## CLI & TUI Usage
 
-For detailed CLI documentation, see [CLI_REFERENCE.md](CLI_REFERENCE.md). For interactive usage, use the Text User Interface (TUI) with `agentic tui`.
-
+For detailed CLI documentation, see [CLI_REFERENCE.md](CLI_REFERENCE.md). For interactive usage, use the Text User Interface (TUI) with `agentic`.
 
 ### Available Commands
 
-- `agentic project` - Project management (init, list, remove, status)
-- `agentic workflow` - Workflow orchestration (init, activate, handoff, status)
-- `agentic tui` - Interactive Text User Interface for guided workflow management
-- `agentic --help` - Show all available options
+The CLI uses a **context-aware design** - commands available depend on whether you're in a project directory or not.
+
+#### Global Commands (from repository root)
+- `agentic init <project>` - Initialize new project with workflow
+- `agentic list-workflows` - List available workflow types
+- `agentic config` - Show configuration
+- `agentic` - Launch TUI (Terminal User Interface)
+
+#### Project Commands (from within project directory)
+- `agentic status` - Show project status and workflow state
+- `agentic activate <agent_id>` - Activate specific agent (e.g., A-01, I-02)
+- `agentic handoff --to A-02 --artifacts "file.md"` - Record agent handoff (from agent inferred from active session)
+- `agentic decision --title "Title" --rationale "Reason"` - Record project decision
+- `agentic end-session` - End current workflow session
 
 ---
 
@@ -94,61 +102,83 @@ For detailed CLI documentation, see [CLI_REFERENCE.md](CLI_REFERENCE.md). For in
 Navigate to your empty folder and initialize a project.
 
 ```bash
-mkdir my-new-saas && cd my-new-saas
-agentic project init MySaaS
+# From repository root (global context)
+agentic init MySaaS --workflow planning --description "My SaaS application project"
 ```
 
-*This creates a project with the default "planning" workflow. Use `--workflow` to specify another workflow.*
+*Available workflows: `planning`, `implementation`, `research`, `workflow-creation`*
 
 ### 2. Agent Workflow Orchestration
 
 Agents operate in environments with terminal access, using CLI commands to orchestrate structured workflows:
 
-1.  **Session Activation:** User or Agents run `agentic workflow activate A-01` to start their session and receive context.
+1.  **Navigate to Project:** `cd projects/MySaaS`
 
-2.  **Context Processing:** Agents access the generated `active_session.md` file containing their role, instructions, and project state.
+2.  **Session Activation:** User or Agents run `agentic activate A-01` to start their session and receive context.
 
-3.  **Artifact Generation:** Agents produce required deliverables and save them to specified artifact paths.
+3.  **Context Processing:** Agents access the generated `active_session.md` file containing their role, instructions, and project state.
 
-4.  **Handoff Execution:** Agents execute handoff commands to progress the workflow:
+4.  **Artifact Generation:** Agents produce required deliverables and save them to specified artifact paths.
+
+5.  **Handoff Execution:** Agents execute handoff commands to progress the workflow:
     ```bash
-    agentic workflow handoff --from A01 --to A02 --artifacts artifacts/A-01/project_brief.md
+    agentic handoff --to A-02 --artifacts "artifacts/project_brief.md,artifacts/requirements.md"
     ```
-    *The system validates artifact existence and workflow rules before allowing progression.*
+    *The system validates artifact existence and workflow rules before allowing progression. The from agent is automatically inferred from the active session.*
 
-5.  **State Management:** Agents can log decisions, record blockers, and query project status using CLI commands throughout the process.
+6.  **State Management:** Agents can log decisions, record blockers, and query project status using CLI commands throughout the process.
 
 ### 3. Review Status
 
 View the decision tree and current state.
 
 ```bash
-agentic workflow status
+agentic status
 ```
 
 ---
 
-## 📦 Workflows (NOT ENTIRLY COVERED YET)
+## 📦 Workflows
 
-The system supports pluggable **Workflow Manifests**.
+The system supports pluggable **Workflow Manifests** with four main workflow types.
 
-### 1. Planning (Canonical)
+### 1. Planning (15 agents: A-00 to A-14)
 *   **Goal:** Turn a 1-sentence idea into a full Tech Spec.
-*   **Agents:**
-    *   `A-01 Incubation`: Refines the idea.
-    *   `A-02 Requirements`: Lists functional/non-functional reqs.
-    *   `A-03 Architect`: Designs the system topology.
-    *   `A-04 Security`: Threat modeling.
-    *   (And 10 more specialized roles).
+*   **Key Agents:**
+    *   `A-00 Orchestrator & Project Controller`
+    *   `A-01 Project Guide & Idea Incubation`
+    *   `A-02 Planning & Requirements Analyst`
+    *   `A-03 Architecture & Technical Design Analyst`
+    *   `A-04 Security & Compliance Scrutineer`
+    *   `A-05 Infrastructure & DevOps Planning Architect`
+    *   `A-06 Data Architecture & Storage Planning Specialist`
+    *   `A-07 API & Integration Planning Specialist`
+    *   `A-08 UX & Interaction Planning Specialist`
+    *   `A-09 Developer Workflow & Engineering Standards Planner`
 
-### 2. Implementation (Canonical)
-*   **Goal:** Turn specs into code.
-*   **Agents:**
-    *   `E-01 Frontend`: React/Vue/Svelte implementation.
-    *   `E-02 Backend`: API & Logic.
-    *   `E-03 Database`: Schema & Migrations.
+### 2. Implementation (10 agents: I-00 to I-05 + specialists)
+*   **Goal:** Turn specs into production code.
+*   **Key Agents:**
+    *   `I-00 Implementation Orchestrator`
+    *   `I-01 Scaffold & DevOps Architect`
+    *   `I-02 Backend & Data Engineer`
+    *   `I-03 Frontend & UX Engineer`
+    *   `I-04 Quality & Validation Specialist`
+    *   `I-05 Release & Integration Manager`
+    *   `I-DOC Documentation Sprint Agent`
+    *   `I-DS Data Store Implementation Specialist`
+    *   `I-PERF Performance Optimization Agent`
+    *   `I-SEC Security Hardening Auditor`
 
-### 3. Custom Workflows
+### 3. Research (12 agents)
+*   **Goal:** Conduct thorough research, analysis, and reporting.
+*   **Use Cases:** Literature review, data analysis, academic research, market research.
+
+### 4. Workflow-Creation (9 agents)
+*   **Goal:** Create and customize new workflow packages.
+*   **Use Cases:** Meta-workflow development, process automation.
+
+### Custom Workflows
 You can create your own workflows by placing a manifest in:
 - Project: `./.agentic/workflows/my-custom-flow/workflow.json`
 - User global: `~/.config/agentic/workflows/my-custom-flow/workflow.json`
@@ -160,102 +190,65 @@ Workflow manifests include `workflow.json`, `agents.json`, `artifacts.json`, etc
 
 ## 🛠️ CLI Commands
 
-### Global Commands
+### Global Commands (from repository root)
 ```bash
 # List available workflows
-agentic workflow list-workflows
+agentic list-workflows
+
+# Initialize new project
+agentic init MyProject --workflow planning --description "My project description"
+
+# Launch TUI (Terminal User Interface)
+agentic
 
 # Show CLI help
 agentic --help
 ```
 
-### TUI Commands
+### Project Commands (from within project directory)
 ```bash
-# Launch Text User Interface for interactive workflow management
-agentic tui
-
-# From source/development:
-python3 -m agentic_workflow.cli.main tui
-```
-*The TUI provides an interactive, menu-driven interface for project management and workflow operations, with context-aware menus that automatically detect whether you're working globally or within a project.*
-
-### Project Commands
-```bash
-# Create new project
-agentic project init MyProject --workflow planning --description "My project description"
-
-# List all projects
-agentic project list
-
-# Show project details
-agentic project list MyProject
-
-# Remove a project
-agentic project remove MyProject --force
+# Navigate to project
+cd projects/MyProject
 
 # Show current project status
-agentic project status
-```
-
-### Workflow Commands
-```bash
-# Initialize workflow in project
-agentic workflow init MyProject --workflow planning --description "My planning project"
+agentic status
 
 # Activate an agent session
-agentic workflow activate MyProject A-01
+agentic activate A-01
 
-# Show project workflow status
-agentic workflow status MyProject
-
-# Record handoff between agents
-agentic workflow handoff MyProject --from A01 --to A02 --artifacts "file.md"
+# Record handoff between agents (from agent inferred from active session)
+agentic handoff --to A-02 --artifacts "requirements.md,architecture.md"
 
 # Record project decision
-agentic workflow decision MyProject --title "Decision title" --rationale "Reasoning"
-
-# Check if handoff exists for agent
-agentic workflow check-handoff MyProject A-02
-
-# List pending handoffs
-agentic workflow list-pending MyProject
-
-# List active blockers
-agentic workflow list-blockers MyProject
+agentic decision --title "Technology Stack Selection" --rationale "React + Node.js chosen for full-stack consistency"
 
 # End workflow session
-agentic workflow end MyProject
-
-# Delete project (workflow command)
-agentic workflow delete MyProject --force
+agentic end-session
 ```
 
 ## ⚙️ Configuration & Governance
 
-### `agentic.toml`
+### `.agentic/config.yaml` (Project Config)
 Every project handles its own configuration.
-```toml
-[project]
-name = "MySaaS"
-version = "0.1.0"
-
-[governance]
-require_reviews = true
-git_commit_on_handoff = true
+```yaml
+workflow: planning
+strict_mode: true
+excluded_paths:
+  - "node_modules"
+  - ".git"
+custom_overrides:
+  governance:
+    require_reviews: true
 ```
 
-### Global Config (`~/.config/agentic/config.toml`)
+### Global Config (`~/.config/agentic/config.yaml`)
 Set your preferences for all projects.
-```toml
-[directories]
-projects = "projects"
-
-[governance]
-level = "moderate"
-
-[workflows]
-default = "planning"
-```
+```yaml
+default_workspace: "~/AgenticProjects"
+editor_command: "code"
+tui_enabled: true
+check_updates: true
+log_level: "INFO"
 
 ---
 

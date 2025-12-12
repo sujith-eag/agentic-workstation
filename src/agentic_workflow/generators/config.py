@@ -24,7 +24,7 @@ def generate_project_config(workflow_type: str, project_name: str, app_config: D
 
     project_config = {
         'name': project_name,
-        'workflow_type': workflow_type,
+        'workflow': workflow_type,
         'version': '1.0.0',
         'description': f'Project generated from {workflow_type} workflow',
         'created_at': datetime.now().isoformat(),
@@ -73,7 +73,7 @@ def generate_project_config(workflow_type: str, project_name: str, app_config: D
         'instructions_file': 'instructions.json'
     })
 
-    project_config['workflow'] = workflow_config
+    project_config['workflow_config'] = workflow_config
 
     # Extract governance configuration
     governance_config = extract_governance_from_workflow(workflow_data)

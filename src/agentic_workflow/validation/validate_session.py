@@ -20,14 +20,16 @@ def fail(msg):
 
 
 def check_project_exists(proj):
-    p = Path("projects") / proj
+    from agentic_workflow.core.project import get_project_dir
+    p = Path(get_project_dir(proj))
     if not p.exists():
         fail(f"project not found: {p}")
     return p
 
 
 def validate_init(args):
-    p = Path("projects") / args.project
+    from agentic_workflow.core.project import get_project_dir
+    p = Path(get_project_dir(args.project))
     if not p.exists():
         fail(f"after init, project directory missing: {p}")
     # basic structure
@@ -46,7 +48,8 @@ def validate_activate(args):
 
 
 def validate_populate(args):
-    af = Path("agent_files")
+    from agentic_workflow.core.paths import get_agent_files_dir
+    af = Path(get_agent_files_dir())
     if not af.exists() or not any(af.glob("A*_*")):
         fail("agent_files not populated")
     display_success("populate validation passed")

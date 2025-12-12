@@ -12,11 +12,26 @@ Usage:
 from pathlib import Path
 from typing import Dict, Optional, Any
 import json
+import re
 
 from .paths import get_projects_dir
+from .config_service import ConfigurationService
 
 # Project config filename (JSON format)
-PROJECT_CONFIG_FILE = "project_config.json"
+PROJECT_CONFIG_FILE = "config.yaml"
+
+__all__ = [
+    "get_project_dir",
+    "project_exists",
+    "load_project_meta",
+    "save_project_meta",
+    "get_project_workflow_name",
+    "get_project_stage",
+    "update_project_meta",
+    "get_project_root",
+    "is_in_project",
+    "validate_project_name",
+]
 
 
 def get_project_dir(project_name: str) -> Path:
@@ -41,7 +56,7 @@ def project_exists(project_name: str) -> bool:
         True if project directory exists and has project_config.json.
     """
     project_dir = get_project_dir(project_name)
-    return project_dir.exists() and (project_dir / PROJECT_CONFIG_FILE).exists()
+    return project_dir.exists() and (project_dir / ".agentic" / PROJECT_CONFIG_FILE).exists()
 
 
 def load_project_meta(project_name: str) -> Optional[Dict[str, Any]]:
@@ -63,13 +78,14 @@ def load_project_meta(project_name: str) -> Optional[Dict[str, Any]]:
         Dict containing project metadata, or None if not found.
     """
     project_dir = get_project_dir(project_name)
-    config_file = project_dir / PROJECT_CONFIG_FILE
+    config_file = project_dir / ".agentic" / PROJECT_CONFIG_FILE
     
     if not config_file.exists():
         return None
     
+    import yaml
     with open(config_file, 'r') as f:
-        return json.load(f)
+        return yaml.safe_load(f)
 
 
 def save_project_meta(project_name: str, data: Dict[str, Any]) -> None:
@@ -86,9 +102,11 @@ def save_project_meta(project_name: str, data: Dict[str, Any]) -> None:
     if not project_dir.exists():
         raise FileNotFoundError(f"Project directory not found: {project_dir}")
     
-    config_file = project_dir / PROJECT_CONFIG_FILE
+    config_file = project_dir / ".agentic" / PROJECT_CONFIG_FILE
+    config_file.parent.mkdir(parents=True, exist_ok=True)
+    import yaml
     with open(config_file, 'w') as f:
-        json.dump(data, f, indent=2)
+        yaml.dump(data, f, default_flow_style=False)
 
 
 def get_project_workflow_name(project_name: str) -> Optional[str]:
@@ -103,7 +121,14 @@ def get_project_workflow_name(project_name: str) -> Optional[str]:
     meta = load_project_meta(project_name)
     if meta is None:
         return None
-    return meta.get('workflow')
+    workflow = meta.get('workflow')
+    if isinstance(workflow, str):
+        return workflow
+    # Handle legacy config where workflow is a dict or missing
+    workflow_type = meta.get('workflow_type')
+    if isinstance(workflow_type, str):
+        return workflow_type
+    return None
 
 
 def get_project_stage(project_name: str) -> Optional[str]:
@@ -141,3 +166,34 @@ def update_project_meta(project_name: str, updates: Dict[str, Any]) -> Dict[str,
     meta.update(updates)
     save_project_meta(project_name, meta)
     return meta
+
+
+def get_project_root() -> Optional[Path]:
+    """Find the project root directory by looking for project structure.
+    
+    Returns:
+        Path to project root, or None if not in a project.
+    """
+    config_service = ConfigurationService()
+    return config_service.find_project_root()
+
+
+def is_in_project() -> bool:
+    """Check if we're currently in a project directory.
+    
+    Returns:
+        True if in a project directory.
+    """
+    return get_project_root() is not None
+
+
+def validate_project_name(name: str) -> bool:
+    """Validate a project name.
+    
+    Args:
+        name: Project name to validate.
+        
+    Returns:
+        True if name is valid (alphanumeric, underscore, hyphen only).
+    """
+    return bool(re.match(r'^[a-zA-Z0-9_-]+$', name))

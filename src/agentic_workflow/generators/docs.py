@@ -13,7 +13,7 @@ from typing import Optional
 
 from agentic_workflow.workflow import WorkflowPackage, load_workflow, WorkflowError
 from agentic_workflow.core.paths import get_templates_dir
-from agentic_workflow.utils.jinja_loader import JinjaTemplateLoader
+from agentic_workflow.utils.templating import TemplateEngine
 from agentic_workflow.generation.denormalizer import Denormalizer
 
 
@@ -38,7 +38,7 @@ def generate_cli_reference(project_name: str, wf: WorkflowPackage) -> str:
     }
 
     # Render using Jinja2 template (no fallback)
-    loader = JinjaTemplateLoader(workflow=wf.name)
+    loader = TemplateEngine(workflow=wf.name)
     return loader.render('docs/CLI_REFERENCE.md.j2', context)
     # Quick Start
     lines.append("## Quick Start (Recommended)")
@@ -430,7 +430,7 @@ def generate_governance(project_name: str, wf: WorkflowPackage) -> str:
     Returns:
         Generated governance markdown content, or empty string if template not found.
     """
-    loader = JinjaTemplateLoader(workflow=wf.name)
+    loader = TemplateEngine(workflow=wf.name)
     
     # Get workflow-specific governance content
     workflow_governance = wf.governance if wf.governance else ""
@@ -452,8 +452,6 @@ def generate_governance(project_name: str, wf: WorkflowPackage) -> str:
         "workflow_governance": workflow_governance
     }
     
-
-
 
 def generate_copilot_instructions(project_name: str, wf: WorkflowPackage) -> str:
     """Generate .github/copilot-instructions.md from template and workflow config.
@@ -480,7 +478,7 @@ def generate_copilot_instructions(project_name: str, wf: WorkflowPackage) -> str
         'on_demand_section': copilot_config.get('on_demand_section', ''),
     }
 
-    loader = JinjaTemplateLoader(workflow=wf.name)
+    loader = TemplateEngine(workflow=wf.name)
     return loader.render('docs/copilot-instructions.md.j2', context)
 
 
@@ -509,5 +507,5 @@ def generate_gemini_instructions(project_name: str, wf: WorkflowPackage) -> str:
         'on_demand_section': copilot_config.get('on_demand_section', ''),
     }
 
-    loader = JinjaTemplateLoader(workflow=wf.name)
+    loader = TemplateEngine(workflow=wf.name)
     return loader.render('docs/GEMINI.md.j2', context)

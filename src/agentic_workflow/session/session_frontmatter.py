@@ -8,11 +8,19 @@ import yaml
 import re
 
 try:
-    from agentic_workflow.utils.jinja_loader import render_session
+    from agentic_workflow.utils.templating import TemplateEngine, ContextResolver
     JINJA2_AVAILABLE = True
 except ImportError:
     JINJA2_AVAILABLE = False
-    render_session = None
+    TemplateEngine = None
+    ContextResolver = None
+
+__all__ = [
+    "merge_frontmatter",
+    "render_frontmatter_yaml", 
+    "load_frontmatter_from_text",
+    "build_orchestrator_session_from_template",
+]
 
 
 def merge_frontmatter(session_fm: dict, agent_fm: dict, project_name: str = None) -> dict:
@@ -161,10 +169,22 @@ def default_orchestrator_substitutions(project_name: str = None) -> dict:
     return subs
 
 
-def build_orchestrator_session_from_template(workflow: str, project_name: str, agent_id: str, timestamp: str = "", extra_subs: dict | None = None, fm_extra: dict | None = None):
-    """Build frontmatter YAML and layer parts from templates for the Orchestrator.
-
-    Returns: (fm_yaml, layer1, layer2, layer3, substitutions)
+def build_orchestrator_session_from_template(workflow: str, project_name: str, agent_id: str, timestamp: str = "", extra_subs: dict | None = None, fm_extra: dict | None = None) -> str:
+    """Build orchestrator session content from Jinja2 templates.
+    
+    Renders the complete session document including frontmatter and content layers
+    for the orchestrator agent using workflow-specific templates.
+    
+    Args:
+        workflow: Workflow name (e.g., 'planning', 'implementation')
+        project_name: Name of the project
+        agent_id: Agent identifier (e.g., 'A-00', 'I-00')
+        timestamp: Session timestamp (ISO format)
+        extra_subs: Additional template substitutions
+        fm_extra: Extra frontmatter fields
+        
+    Returns:
+        Rendered session content as string with frontmatter and markdown content
     """
     if not JINJA2_AVAILABLE:
         raise ImportError("Jinja2 is required. Please install with: pip install jinja2")
@@ -176,14 +196,16 @@ def build_orchestrator_session_from_template(workflow: str, project_name: str, a
         else:
             agent_id = 'A-00'
 
-    return render_session(
+    engine = TemplateEngine(workflow=workflow)
+    resolver = ContextResolver()
+    context = resolver.get_session_context(
         workflow=workflow,
-        agent_id=agent_id, # Use the passed agent_id
+        agent_id=agent_id,
         project_name=project_name,
-        template_name="session_base.md.j2",
         timestamp=timestamp,
         extra_subs=extra_subs
     )
+    return engine.render("session_base.md.j2", context)
 
 
 def ensure_context_file(project_dir: Path, context_file: str, agent_data: dict, templates_dir: Path = None) -> bool:

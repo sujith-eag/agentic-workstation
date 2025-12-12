@@ -12,6 +12,8 @@ from ..ledger.entry_writer import write_handoff, write_decision
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["LedgerService"]
+
 
 class LedgerService:
     """Service for ledger operations."""
@@ -42,8 +44,21 @@ class LedgerService:
     def record_decision(self, project_name: str, title: str, rationale: str,
                        agent_id: Optional[str] = None) -> Dict[str, Any]:
         """Record a decision."""
-        # Placeholder implementation
-        return {}
+        try:
+            entry_id, md_path = write_decision(
+                project_name=project_name,
+                title=title,
+                rationale=rationale,
+                agent_id=agent_id
+            )
+            return {
+                'entry_id': entry_id,
+                'md_path': md_path,
+                'status': 'recorded'
+            }
+        except Exception as e:
+            logger.error(f"Failed to record decision: {e}")
+            raise
 
     def get_status(self, project_name: str) -> Dict[str, Any]:
         """Get project status."""

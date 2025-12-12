@@ -12,33 +12,26 @@ Usage:
 import sys
 import shutil
 import hashlib
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from agentic_workflow.workflow.canonical import load_artifacts_json
-
-# Use core modules instead of duplicated code
 from agentic_workflow.core.project import load_project_meta, save_project_meta
 from agentic_workflow.core.paths import PROJECTS_DIR
-from agentic_workflow.cli.utils import display_info, display_warning, display_success, display_error
+
+logger = logging.getLogger(__name__)
 
 
-def load_workflow_artifacts(workflow_name: str) -> Optional[Dict]:
-    """Load workflow artifacts configuration from canonical JSON."""
-    artifacts_json = load_artifacts_json(workflow_name)
-    if artifacts_json:
-        return artifacts_json
-    return None
+__all__ = ["sync_from_planning"]
 
 
 def get_input_artifacts(workflow_name: str) -> List[Dict]:
     """Get list of input artifacts from workflow configuration."""
-    artifacts_data = load_workflow_artifacts(workflow_name)
-    if not artifacts_data:
-        return []
-    
-    return artifacts_data.get('input_artifacts', [])
+    from ..generation.canonical_loader import load_workflow
+    wf = load_workflow(workflow_name)
+    # Assume wf.artifacts contains input artifacts
+    return wf.artifacts
 
 
 def file_hash(file_path: Path) -> str:
@@ -171,7 +164,7 @@ def sync_from_planning(
         # Find source
         source_path = find_artifact_source(planning_project_dir, artifact_id)
         if not source_path:
-            display_warning(f"Artifact '{artifact_id}' not found in planning project")
+            logger.warning(f"Artifact '{artifact_id}' not found in planning project")
             continue
         
         target_path = target_dir / f"{artifact_id}.md"
@@ -206,23 +199,3 @@ def sync_from_planning(
         'changed_files': changed_files,
         'dry_run': dry_run
     }
-
-
-if __name__ == "__main__":
-    import sys
-    
-    if len(sys.argv) < 2:
-        display_info("Usage: python sync_planning.py [--dry-run]")
-        sys.exit(1)
-    
-    dry_run = "--dry-run" in sys.argv
-    result = sync_from_planning(sys.argv[1], dry_run=dry_run)
-    
-    if result['success']:
-        display_success(f"Synced from: {result['planning_project']}")
-        display_info(f"Files: {result['file_count']}")
-        if result.get('changed_files'):
-            display_info(f"Changed: {', '.join(result['changed_files'])}")
-    else:
-        display_error(f"Sync failed: {result['error']}")
-        sys.exit(1)

@@ -23,25 +23,6 @@ def project():
 
 
 @project.command()
-@click.argument('name')
-@click.option('--workflow', '-w', default=None,
-              help='Workflow type to use (planning, research, implementation, etc.)')
-@click.option('--description', '-d', help='Project description')
-@click.option('--force', '-f', is_flag=True, help='Overwrite existing project')
-def init(name: str, workflow: Optional[str], description: str, force: bool):
-    """Initialize a new project."""
-    try:
-        handlers.handle_init(
-            name=name,
-            workflow=workflow,
-            description=description,
-            force=force
-        )
-    except Exception as e:
-        display_error(f"Project initialization failed: {e}")
-
-
-@project.command()
 @click.argument('name', required=False)
 @click.pass_context
 def list(ctx: click.Context, name: Optional[str]):
@@ -70,9 +51,31 @@ def remove(name: str, force: bool):
 
 
 @project.command()
-def status():
-    """Show current project status."""
+@click.argument('agent_id')
+def activate(agent_id: str):
+    """Activate an agent session."""
     try:
-        handlers.handle_status()
+        handlers.handle_activate(agent_id=agent_id)
     except Exception as e:
-        display_error(f"Project status check failed: {e}")
+        display_error(f"Agent activation failed: {e}")
+
+
+@project.command()
+@click.option('--to', required=True, help='Target agent ID')
+@click.option('--artifacts', help='Comma-separated artifact names')
+def handoff(to: str, artifacts: str):
+    """Handoff to next agent."""
+    try:
+        artifact_list = artifacts.split(',') if artifacts else []
+        handlers.handle_handoff(to=to, artifacts=artifact_list)
+    except Exception as e:
+        display_error(f"Handoff failed: {e}")
+
+
+@project.command()
+def end():
+    """End the current session."""
+    try:
+        handlers.handle_end_session()
+    except Exception as e:
+        display_error(f"Session end failed: {e}")

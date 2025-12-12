@@ -10,12 +10,15 @@ This allows the handlers to be used both from CLI (via Click) and programmatical
 
 from typing import Optional, List
 import logging
+from pathlib import Path
 
 from ...core.exceptions import CLIExecutionError, handle_error, validate_required
 from ...services import LedgerService, ProjectService
 from ..utils import display_action_result, display_info, display_status_panel
 
 logger = logging.getLogger(__name__)
+
+__all__ = ["QueryHandlers"]
 
 
 class QueryHandlers:
@@ -31,19 +34,26 @@ class QueryHandlers:
 
     def handle_status(
         self,
-        project: str
+        project: Optional[str] = None
     ) -> None:
         """
         Handle project status command.
 
         Args:
-            project: Project name (required)
+            project: Project name (optional, auto-detected in project context)
 
         Raises:
             CLIExecutionError: If status retrieval fails
         """
         try:
-            validate_required(project, "project", "status")
+            # Auto-detect project if not provided
+            if not project:
+                from ...core.config_service import ConfigurationService
+                config_service = ConfigurationService()
+                config = config_service.load_config()
+                if not config.is_project_context:
+                    raise CLIExecutionError("No project specified and not in project context")
+                project = Path.cwd().name  # Use current directory name
 
             logger.info(f"Getting status for project '{project}'")
 

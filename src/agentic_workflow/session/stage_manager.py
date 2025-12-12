@@ -16,18 +16,26 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
+import logging
 
-from agentic_workflow.workflow.canonical import load_workflow_json
+from agentic_workflow.generation.canonical_loader import load_workflow
 
 # Use core modules instead of duplicated code
 from agentic_workflow.core.project import load_project_meta, save_project_meta
-from agentic_workflow.core.paths import WORKFLOWS_DIR, PROJECTS_DIR
-from agentic_workflow.cli.utils import display_success, display_error, display_warning, display_info
+from agentic_workflow.core.paths import get_manifests_dir, PROJECTS_DIR
+
+logger = logging.getLogger(__name__)
+
+__all__ = ["get_stage", "set_stage", "get_workflow_stages"]
 
 
 def load_workflow_config(workflow_name: str) -> Optional[Dict]:
     """Load workflow configuration from canonical JSON."""
-    return load_workflow_json(workflow_name) or None
+    try:
+        wf = load_workflow(workflow_name)
+        return wf.metadata
+    except Exception:
+        return None
 
 
 def get_workflow_stages(workflow_name: str) -> List[str]:
@@ -213,7 +221,7 @@ def set_stage(
     try:
         log_stage_transition(project_name, current_stage, stage)
     except Exception as e:
-        display_warning(f"Could not log stage transition: {e}")
+        logger.warning(f"Could not log stage transition: {e}")
     
     return {
         'success': True,
@@ -266,36 +274,3 @@ def list_stages(project_name: str) -> Dict[str, Any]:
         'current': current_stage,
         'workflow': workflow_name
     }
-
-
-if __name__ == "__main__":
-    import sys
-    
-    if len(sys.argv) < 2:
-        display_error("Usage:")
-        display_error("  python stage_manager.py <project>              # List stages")
-        display_error("  python stage_manager.py <project> <stage>      # Set stage")
-        sys.exit(1)
-    
-    project = sys.argv[1]
-    
-    if len(sys.argv) == 2:
-        # List stages
-        result = list_stages(project)
-        if 'error' in result:
-            display_error(result['error'])
-            sys.exit(1)
-        
-        display_info(f"=== Stages for {project} ({result['workflow']}) ===")
-        for s in result['stages']:
-            marker = "→" if s['current'] else " "
-            display_info(f"  {marker} {s['id']}: {s['name']}")
-        display_info("")
-    else:
-        # Set stage
-        result = set_stage(project, sys.argv[2])
-        if result['success']:
-            display_success(f"Stage: {result['previous']} → {result['current']}")
-        else:
-            display_error(f"Failed: {result['error']}")
-            sys.exit(1)

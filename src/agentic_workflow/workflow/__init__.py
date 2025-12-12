@@ -5,7 +5,7 @@ Provides functions for discovering and loading workflow packages from
 manifests/workflows//.
 """
 
-from .loader import (
+from ..generation.canonical_loader import (
     list_workflows,
     load_workflow,
     get_workflow_agents,

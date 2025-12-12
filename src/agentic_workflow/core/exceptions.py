@@ -11,9 +11,95 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    # Base Exception
+    "AgenticWorkflowError",
+    
+    # Configuration Errors
+    "ConfigError",
+    "ConfigNotFoundError", 
+    "ConfigValidationError",
+    "ConfigMergeError",
+    
+    # Project Errors
+    "ProjectError",
+    "ProjectNotFoundError",
+    "ProjectAlreadyExistsError",
+    "ProjectValidationError",
+    
+    # Workflow Errors
+    "WorkflowError",
+    "WorkflowNotFoundError",
+    "WorkflowValidationError",
+    "WorkflowExecutionError",
+    
+    # Agent Errors
+    "AgentError",
+    "AgentNotFoundError",
+    "AgentValidationError",
+    
+    # CLI Errors
+    "CLIError",
+    "CLIValidationError",
+    "CLIExecutionError",
+    
+    # Validation Errors
+    "ValidationError",
+    "SchemaValidationError",
+    
+    # File System Errors
+    "FileSystemError",
+    "FileNotFoundError",
+    "FilePermissionError",
+    "DirectoryError",
+    
+    # Ledger Errors
+    "LedgerError",
+    "LedgerValidationError",
+    "LedgerCorruptionError",
+    
+    # Generation Errors
+    "GenerationError",
+    "TemplateError",
+    "TemplateNotFoundError",
+    
+    # Service Errors
+    "ServiceError",
+    "ServiceUnavailableError",
+    "ServiceTimeoutError",
+    
+    # Handler Errors
+    "HandlerError",
+    "SessionError",
+    "ArtifactError",
+    
+    # Governance Errors
+    "GovernanceError",
+    "ValidationViolation",
+    "PolicyConfigurationError",
+    
+    # Utility Functions
+    "handle_error",
+    "validate_required",
+    "validate_path_exists",
+    "validate_file_readable",
+    "safe_operation",
+]
+
 
 class AgenticWorkflowError(Exception):
-    """Base exception for all agentic workflow errors."""
+    """Base exception for all agentic workflow errors.
+    
+    This exception provides structured error handling with error codes,
+    context information, and cause chaining for better debugging and logging.
+    All custom exceptions in the agentic workflow system inherit from this base class.
+    
+    Args:
+        message: Human-readable error message
+        error_code: Machine-readable error code (defaults to class name)
+        context: Additional context dictionary for debugging
+        cause: Original exception that caused this error (for chaining)
+    """
 
     def __init__(
         self,

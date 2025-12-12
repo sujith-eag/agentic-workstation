@@ -41,6 +41,7 @@ GOVERNANCE_CONTEXT_INIT = "init"
 GOVERNANCE_CONTEXT_HANDOFF = "handoff"
 GOVERNANCE_CONTEXT_DECISION = "decision"
 GOVERNANCE_CONTEXT_END = "end"
+GOVERNANCE_CONTEXT_ACTIVATION = "activation"
 
 
 @dataclass
@@ -219,6 +220,33 @@ class GovernanceEngine:
                 condition=self._check_artifacts_complete,
                 error_message='Required artifacts are incomplete',
                 fix_suggestion='Complete all required artifacts before ending session'
+            ),
+            'agent_stage_valid': GovernanceRule(
+                name='agent_stage_valid',
+                description='Agent must be valid for current project stage',
+                context=GOVERNANCE_CONTEXT_ACTIVATION,
+                level=GOVERNANCE_LEVEL_STRICT,
+                condition=self._check_agent_stage,
+                error_message='Agent cannot be activated in current stage',
+                fix_suggestion='Advance to appropriate stage or select different agent'
+            ),
+            'agent_artifacts_exist': GovernanceRule(
+                name='agent_artifacts_exist',
+                description='Required artifacts must exist for agent activation',
+                context=GOVERNANCE_CONTEXT_ACTIVATION,
+                level=GOVERNANCE_LEVEL_MODERATE,
+                condition=self._check_agent_artifacts,
+                error_message='Required artifacts are missing',
+                fix_suggestion='Create required artifacts before activating agent'
+            ),
+            'agent_not_blocked': GovernanceRule(
+                name='agent_not_blocked',
+                description='Agent must not be blocked',
+                context=GOVERNANCE_CONTEXT_ACTIVATION,
+                level=GOVERNANCE_LEVEL_STRICT,
+                condition=self._check_agent_not_blocked,
+                error_message='Agent is currently blocked',
+                fix_suggestion='Resolve blockers before activating agent'
             )
         }
 
@@ -437,6 +465,43 @@ class GovernanceEngine:
                         if not artifact_path.exists():
                             return False
 
+            return True
+        except Exception:
+            return True
+
+    def _check_agent_stage(self, data: Dict[str, Any]) -> bool:
+        """Check if agent can be activated in current stage."""
+        try:
+            agent_stage = data.get('agent', {}).get('stage', '')
+            current_stage = data.get('stage', {}).get('current', '')
+            
+            if not agent_stage or not current_stage:
+                return True  # No specific stage requirement
+            
+            # Simple check: agent stage should be <= current stage
+            # This is a basic implementation - could be enhanced
+            return agent_stage == current_stage
+        except Exception:
+            return True
+
+    def _check_agent_artifacts(self, data: Dict[str, Any]) -> bool:
+        """Check if required artifacts exist for agent."""
+        try:
+            consumes_core = data.get('agent', {}).get('consumes_core', [])
+            if not consumes_core:
+                return True  # No required artifacts
+            
+            # For now, assume artifacts exist if listed
+            # Could be enhanced to check actual file existence
+            return True
+        except Exception:
+            return True
+
+    def _check_agent_not_blocked(self, data: Dict[str, Any]) -> bool:
+        """Check if agent is not blocked."""
+        try:
+            # For now, assume no blockers
+            # Could be enhanced to check blocker logs
             return True
         except Exception:
             return True

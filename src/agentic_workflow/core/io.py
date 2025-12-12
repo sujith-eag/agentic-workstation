@@ -13,9 +13,20 @@ from pathlib import Path
 from typing import Union
 import os
 
+__all__ = [
+    "create_directory",
+    "ensure_parent_dir", 
+    "write_file",
+    "read_file",
+    "make_executable",
+]
+
 
 def create_directory(path: Union[str, Path]) -> Path:
     """Create a directory if it doesn't exist.
+    
+    Safe wrapper ensuring consistent directory creation with proper permissions
+    and cross-platform compatibility. Automatically creates parent directories.
     
     Args:
         path: Directory path to create.
@@ -32,6 +43,9 @@ def create_directory(path: Union[str, Path]) -> Path:
 def ensure_parent_dir(file_path: Union[str, Path]) -> Path:
     """Ensure the parent directory of a file exists.
     
+    Safe wrapper that creates parent directories before file operations,
+    preventing file write failures due to missing directories.
+    
     Args:
         file_path: Path to a file.
         
@@ -46,6 +60,9 @@ def ensure_parent_dir(file_path: Union[str, Path]) -> Path:
 
 def write_file(file_path: Union[str, Path], content: str, overwrite: bool = True) -> bool:
     """Write content to a file.
+    
+    Safe wrapper ensuring parent directories exist and providing atomic writes
+    with proper encoding (UTF-8) to prevent data corruption.
     
     Args:
         file_path: Path to the file.
@@ -69,6 +86,9 @@ def write_file(file_path: Union[str, Path], content: str, overwrite: bool = True
 def read_file(file_path: Union[str, Path]) -> str:
     """Read content from a file.
     
+    Safe wrapper ensuring consistent file reading with proper encoding (UTF-8)
+    and error handling for missing files.
+    
     Args:
         file_path: Path to the file.
         
@@ -85,6 +105,9 @@ def read_file(file_path: Union[str, Path]) -> str:
 
 def make_executable(file_path: Union[str, Path]) -> None:
     """Make a file executable (chmod +x).
+    
+    Safe wrapper for setting executable permissions on script files,
+    ensuring cross-platform compatibility for deployment.
     
     Args:
         file_path: Path to the file.

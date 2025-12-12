@@ -8,7 +8,6 @@ activation, and management.
 from pathlib import Path
 from typing import Dict, Any, Optional
 import logging
-import yaml
 
 # Use tomllib for TOML files (Python 3.11+), fallback to tomli for older versions
 try:
@@ -17,27 +16,74 @@ except ImportError:
     import tomli as tomllib
 
 from ..core.exceptions import (
-    ProjectError, ProjectNotFoundError, ProjectValidationError,
-    validate_required, validate_path_exists
+    ProjectError, ProjectNotFoundError,
+    validate_required
 )
 from ..core.config_service import ConfigurationService
-from ..core.project_generation import create_project_from_workflow
+from ..core.models import PipelineResult
+from ..session.gate_checker import GateChecker
+from ..generators.pipeline import InitPipeline
+from ..utils.templating import TemplateEngine
+from ..ledger.entry_builders import get_timestamp
+from ..core.io import write_file, read_file
 
 logger = logging.getLogger(__name__)
+
+__all__ = ["ProjectService"]
 
 
 class ProjectService:
     """Service for project operations."""
 
-    def __init__(self):
-        self.config_service = ConfigurationService()
-        # Initial config load, will be refreshed per command context if needed
-        # But for now, we assume standard load. 
-        # Ideally, we should pass 'project_path' if known, but for __init__ we don't know it yet.
-        # We can lazy load or dynamic load.
-        # The existing code did `get_config_for_command()` which auto-detected project root.
-        # Our load_config() does similar detection if path is None.
-        self.config = self.config_service.load_config()
+    def __init__(self, config=None):
+        if config:
+            self.config = config
+        else:
+            self.config_service = ConfigurationService()
+            self.config = self.config_service.load_config()
+        
+        self.gate_checker = GateChecker(self.config)
+
+    def init_project(
+        self,
+        project_name: str,
+        workflow_name: str = None,
+        description: str = None,
+        force: bool = False
+    ) -> PipelineResult:
+        """
+        Initialize a new project.
+
+        Args:
+            project_name: Name of the project to create
+            workflow_name: Workflow type (default: from registry)
+            description: Project description
+            force: Overwrite existing project if True
+
+        Returns:
+            PipelineResult with initialization results
+
+        Raises:
+            ProjectError: If initialization fails
+        """
+        validate_required(project_name, "project_name", "init_project")
+
+        # Check if project already exists
+        if self.project_exists(project_name) and not force:
+            raise ProjectError(
+                f"Project '{project_name}' already exists. Use force=True to overwrite.",
+                error_code="PROJECT_EXISTS",
+                context={"project": project_name}
+            )
+
+        # Resolve target path
+        target_path = self.config.system.default_workspace / project_name
+
+        # Initialize project using pipeline
+        pipeline = InitPipeline(self.config)
+        result = pipeline.run(project_name, str(target_path), workflow_name or "planning", force)
+
+        return result
 
     def project_exists(self, project_name: str) -> bool:
         """
@@ -53,70 +99,12 @@ class ProjectService:
 
         from ..core.path_resolution import find_repo_root
         repo_root = find_repo_root()
-        projects_dir = repo_root / self.config.get('directories', {}).get('projects', 'projects')
+        # Use the default workspace from system config
+        projects_dir = self.config.system.default_workspace
         project_path = projects_dir / project_name
         return project_path.exists() and project_path.is_dir()
 
-    def initialize_project(
-        self,
-        project_name: str,
-        workflow_type: str = 'planning',
-        description: Optional[str] = None,
-        force: bool = False
-    ) -> Dict[str, Any]:
-        """
-        Initialize a new project.
-
-        Args:
-            project_name: Name of the project
-            workflow_type: Type of workflow to use
-            force: Whether to overwrite existing project
-
-        Returns:
-            Dictionary with initialization results
-
-        Raises:
-            ProjectError: If initialization fails
-        """
-        validate_required(project_name, "project_name", "initialize_project")
-        validate_required(workflow_type, "workflow_type", "initialize_project")
-
-        try:
-            logger.info(f"Initializing project '{project_name}' with workflow '{workflow_type}'")
-
-            # Create project using existing logic
-            projects_dir = Path(self.config.get('directories', {}).get('projects', 'projects'))
-            project_path = projects_dir / project_name
-
-            # Create project from workflow
-            merged_config = create_project_from_workflow(workflow_type, project_name, project_path)
-
-            # Initialize session files and project structure
-            try:
-                from ..session.init_project import init_project
-                init_project(project_name, workflow_type, description)
-                logger.info(f"Initialized session files for project '{project_name}'")
-            except Exception as e:
-                logger.warning(f"Failed to initialize session files: {e}")
-
-            return {
-                'project_name': project_name,
-                'workflow_type': workflow_type,
-                'agent_count': len(merged_config.get('agents', {})),
-                'directory_count': len(merged_config.get('directories', {})),
-                'directories_created': merged_config.get('directories_created', []),
-                'status': 'initialized'
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to initialize project '{project_name}': {e}")
-            raise ProjectError(
-                f"Project initialization failed: {e}",
-                context={'project_name': project_name, 'workflow_type': workflow_type},
-                cause=e
-            )
-
-    def refresh_project(self, project_name: str) -> Dict[str, Any]:
+    def refresh_project(self, project_name: str) -> PipelineResult:
         """
         Refresh an existing project.
 
@@ -124,7 +112,7 @@ class ProjectService:
             project_name: Name of the project
 
         Returns:
-            Dictionary with refresh results
+            PipelineResult with refresh results
 
         Raises:
             ProjectError: If refresh fails
@@ -134,14 +122,47 @@ class ProjectService:
         if not self.project_exists(project_name):
             raise ProjectNotFoundError(f"Project '{project_name}' not found")
 
-        # Placeholder - implement refresh logic
-        logger.info(f"Refreshing project '{project_name}'")
-        return {
-            'project_name': project_name,
-            'updated_agents': 0,
-            'updated_artifacts': 0,
-            'status': 'refreshed'
-        }
+        # Determine project_path
+        projects_dir = Path(self.config.system.default_workspace)
+        project_path = projects_dir / project_name
+
+        # Retrieve workflow name from project config
+        config_data = self._load_project_config(project_path / '.agentic' / 'config')
+        workflow_name = config_data.get('workflow', 'unknown')
+        if workflow_name == 'unknown':
+            raise ProjectError(f"Could not determine workflow for project '{project_name}'")
+
+        # Execute refresh
+        pipeline = InitPipeline(self.config)
+        result = pipeline.refresh(project_name, project_path, workflow_name)
+
+        return result
+
+    def _get_agent_stage(self, project_name: str, agent_id: str) -> Optional[str]:
+        """Get the stage an agent belongs to."""
+        try:
+            project_meta = self._load_project_config(Path(self.config.system.default_workspace) / project_name / '.agentic' / 'config')
+            workflow_name = project_meta.get('workflow', 'planning')
+            
+            from ..generation.canonical_loader import load_workflow
+            workflow_data = load_workflow(workflow_name)
+            agents = workflow_data.agents
+            agent = next((a for a in agents if a.get("id") == agent_id), {})
+            stage = agent.get("stage")
+            if stage:
+                return stage
+            # If no stage in agent, look in stages
+            for stage_name, agent_ids in workflow_data.stages.items():
+                if agent_id in agent_ids:
+                    return stage_name
+            return ""
+        except Exception:
+            return ""
+
+    def _get_current_stage(self, project_name: str) -> str:
+        """Get the current stage of a project."""
+        project_meta = self._load_project_config(Path(self.config.system.default_workspace) / project_name / '.agentic' / 'config')
+        return project_meta.get('current_stage', 'INTAKE')
 
     def activate_agent(self, project_name: str, agent_id: str) -> Dict[str, Any]:
         """
@@ -163,9 +184,42 @@ class ProjectService:
         if not self.project_exists(project_name):
             raise ProjectNotFoundError(f"Project '{project_name}' not found")
 
+        # Check gates before activation
+        gate_result = self.gate_checker.check_gate(project_name, agent_id)
+        if not gate_result.passed:
+            from ..core.exceptions import GovernanceError
+            if self.config.project.strict_mode:
+                raise GovernanceError(f"Gate check failed for agent {agent_id}: {gate_result.violations}")
+            else:
+                logger.warning(f"Gate check failed for agent {agent_id}, proceeding in lenient mode: {gate_result.violations}")
+
+        # Get agent definition for role
+        project_meta = self._load_project_config(Path(self.config.system.default_workspace) / project_name / '.agentic' / 'config')
+        workflow_name = project_meta.get('workflow', 'planning')
+        from ..generation.canonical_loader import load_workflow
+        wf = load_workflow(workflow_name)
+        agent_id_formatted = wf.format_agent_id(agent_id)
+        agent_def = wf.get_agent(agent_id_formatted)
+        role = agent_def.get('role', 'Unknown') if agent_def else 'Unknown'
+
+        # Check if agent belongs to different stage and auto-advance if needed
+        agent_stage = self._get_agent_stage(project_name, agent_id)
+        current_stage = self._get_current_stage(project_name)
+        
+        stage_advanced = False
+        if agent_stage and agent_stage != current_stage:
+            # Auto-advance to agent's stage
+            from ..session.stage_manager import set_stage
+            stage_result = set_stage(project_name, agent_stage, force=True)
+            if stage_result.get('success'):
+                logger.info(f"Auto-advanced stage from {current_stage} to {agent_stage} for agent {agent_id}")
+                stage_advanced = True
+            else:
+                logger.warning(f"Failed to auto-advance stage: {stage_result.get('error')}")
+
         from ..core.path_resolution import find_repo_root
         repo_root = find_repo_root()
-        projects_dir = repo_root / self.config.get('directories', {}).get('projects', 'projects')
+        projects_dir = repo_root / self.config.system.default_workspace
         project_path = projects_dir / project_name
 
         if not project_path.exists():
@@ -181,7 +235,12 @@ class ProjectService:
         return {
             'project_name': project_name,
             'agent_id': agent_id,
-            'status': 'activated'
+            'role': role,
+            'session_id': agent_id_formatted,
+            'status': 'activated',
+            'stage_advanced': stage_advanced,
+            'previous_stage': current_stage if stage_advanced else None,
+            'current_stage': agent_stage if stage_advanced else current_stage
         }
 
     def end_session(self, project_name: str) -> Dict[str, Any]:
@@ -202,44 +261,42 @@ class ProjectService:
         if not self.project_exists(project_name):
             raise ProjectNotFoundError(f"Project '{project_name}' not found")
 
-        # Placeholder - implement session end logic
-        logger.info(f"Ending session for project '{project_name}'")
-        return {
-            'project_name': project_name,
-            'archived_agents': 0,
-            'status': 'completed'
-        }
+        # Determine project_path
+        projects_dir = Path(self.config.system.default_workspace)
+        project_path = projects_dir / project_name
 
-    def populate_frontmatter(self, project_name: str) -> Dict[str, Any]:
-        """
-        Populate agent frontmatter from manifest data.
+        # Retrieve workflow name from project config
+        config_data = self._load_project_config(project_path / '.agentic' / 'config')
+        workflow_name = config_data.get('workflow', 'unknown')
+        if workflow_name == 'unknown':
+            raise ProjectError(f"Could not determine workflow for project '{project_name}'")
 
-        Args:
-            project_name: Name of the project
+        # Locate active_session.md
+        active_session_path = project_path / 'agent_context' / 'active_session.md'
 
-        Returns:
-            Dictionary with population results
+        # Archive current content
+        try:
+            current_content = read_file(active_session_path)
+            timestamp = get_timestamp()
+            archive_dir = project_path / 'agent_log' / 'archives'
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            archive_path = archive_dir / f'session_{timestamp}.md'
+            write_file(archive_path, current_content)
+        except FileNotFoundError:
+            logger.warning(f"No active session file found for project '{project_name}', skipping archive")
+            archive_path = None
 
-        Raises:
-            ProjectError: If population fails
-        """
-        validate_required(project_name, "project_name", "populate_frontmatter")
+        # Reset active_session.md
+        loader = TemplateEngine(workflow=workflow_name)
+        context = {"project_name": project_name, "status": "ready"}
+        fresh_content = loader.render('_base/session_base.md.j2', context)
+        write_file(active_session_path, fresh_content)
 
-        if not self.project_exists(project_name):
-            raise ProjectNotFoundError(f"Project '{project_name}' not found")
-
-        # Placeholder - implement frontmatter population logic
-        logger.info(f"Populating frontmatter for project '{project_name}'")
-        return {
-            'project_name': project_name,
-            'processed_agents': 0,
-            'updated_files': 0,
-            'status': 'completed'
-        }
+        return {'status': 'ended', 'archived_to': str(archive_path) if archive_path else None}
 
     def _load_project_config(self, config_path: Path) -> Dict[str, Any]:
         """
-        Load project config from either TOML or JSON file.
+        Load project config from config file.
         
         Args:
             config_path: Path to config file (without extension)
@@ -247,34 +304,15 @@ class ProjectService:
         Returns:
             Config data dict, or empty dict if file not found
         """
-        # Try TOML first (preferred format)
-        toml_file = config_path.with_suffix('.toml')
-        if toml_file.exists():
+        # Try YAML (standard format)
+        yaml_file = config_path.with_suffix('.yaml')
+        if yaml_file.exists():
             try:
-                with open(toml_file, 'rb') as f:
-                    return tomllib.load(f)
+                import yaml
+                with open(yaml_file, 'r') as f:
+                    return yaml.safe_load(f) or {}
             except Exception as e:
-                logger.warning(f"Failed to load TOML config {toml_file}: {e}")
-        
-        # Try JSON (agentic.json)
-        json_file = config_path.with_suffix('.json')
-        if json_file.exists():
-            try:
-                import json
-                with open(json_file, 'r') as f:
-                    return json.load(f)
-            except Exception as e:
-                logger.warning(f"Failed to load JSON config {json_file}: {e}")
-        
-        # Try legacy project_config.json for backward compatibility
-        legacy_json_file = config_path.parent / 'project_config.json'
-        if legacy_json_file.exists():
-            try:
-                import json
-                with open(legacy_json_file, 'r') as f:
-                    return json.load(f)
-            except Exception as e:
-                logger.warning(f"Failed to load legacy config {legacy_json_file}: {e}")
+                logger.warning(f"Failed to load YAML config {yaml_file}: {e}")
         
         return {}
     
@@ -291,7 +329,7 @@ class ProjectService:
         try:
             logger.info("Listing all projects")
 
-            projects_dir = Path(self.config.get('directories', {}).get('projects', 'projects'))
+            projects_dir = Path(self.config.system.default_workspace)
             projects = []
 
             if not projects_dir.exists():
@@ -303,7 +341,7 @@ class ProjectService:
 
             for item in projects_dir.iterdir():
                 if item.is_dir():
-                    config_data = self._load_project_config(item / 'agentic')
+                    config_data = self._load_project_config(item / '.agentic' / 'config')
                     
                     if config_data:
                         projects.append({
@@ -355,7 +393,7 @@ class ProjectService:
             if not self.project_exists(project_name):
                 raise ProjectNotFoundError(f"Project '{project_name}' not found")
 
-            projects_dir = Path(self.config.get('directories', {}).get('projects', 'projects'))
+            projects_dir = Path(self.config.system.default_workspace)
             project_path = projects_dir / project_name
 
             # Remove project directory
@@ -398,8 +436,8 @@ class ProjectService:
                 if not self.project_exists(project_name):
                     raise ProjectNotFoundError(f"Project '{project_name}' not found")
 
-                projects_dir = Path(self.config.get('directories', {}).get('projects', 'projects'))
-                project_data = self._load_project_config(projects_dir / project_name / 'agentic')
+                projects_dir = Path(self.config.system.default_workspace)
+                project_data = self._load_project_config(projects_dir / project_name / '.agentic' / 'config')
 
                 if project_data:
                     return {
@@ -427,7 +465,7 @@ class ProjectService:
                         'message': 'Not in a project directory'
                     }
 
-                config_data = self._load_project_config(project_root / 'agentic')
+                config_data = self._load_project_config(project_root / '.agentic' / 'config')
                 if config_data:
                     return {
                         'project_name': config_data.get('name', 'unknown'),
