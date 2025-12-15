@@ -20,7 +20,7 @@
 {% endif %}
 {% endfor %}
 {% else %}
-**Terminal Agent** — No handoff required. End workflow with `./workflow end`.
+**Terminal Agent** — No handoff required. End workflow with `agentic end`.
 {% endif %}
 
 {% if handoff.conditions %}
@@ -59,6 +59,6 @@ Before handoff, verify:
 {% if handoff.next %}
 **Handoff Command:**
 ```bash
-./workflow handoff --from {{ agent_id }} --to {{ handoff.next[0].id }} --artifacts "{{ handoff.required_artifacts | join(', ') if handoff.required_artifacts else '...' }}"
+agentic handoff --to {{ handoff.next[0].id }} --artifacts "{{ handoff.required_artifacts | join(', ') if handoff.required_artifacts else '...' }}" --notes "Handoff notes"
 ```
 {% endif %}

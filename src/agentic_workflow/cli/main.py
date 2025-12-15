@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Main CLI entry point for Agentic Workflow."""
+"""
+Main CLI entry point for Agentic Workflow OS.
+Role: Context Router. Directs commands to specific operations modules.
+"""
+import sys
 import click
-from pathlib import Path
 from rich.console import Console
 from rich_click import RichGroup
 
@@ -9,218 +12,140 @@ from agentic_workflow import __version__
 from agentic_workflow.core.config_service import ConfigurationService
 from agentic_workflow.core.schema import RuntimeConfig
 from agentic_workflow.core.exceptions import AgenticWorkflowError
-from agentic_workflow.cli.utils import display_error, display_info, display_warning
+from agentic_workflow.cli.utils import display_error, setup_logging
 
-# Initialize console
+# Import New Command Modules (Phase 2)
+from agentic_workflow.cli.commands import global_ops
+from agentic_workflow.cli.commands import project_ops
+from agentic_workflow.cli.commands import active_session
+
 console = Console()
 
-
 class ContextAwareGroup(RichGroup):
-    """RichGroup that shows context-aware help."""
-
-    def get_command(self, ctx: click.Context, cmd_name: str):
-        """Get command with context awareness."""
-        # Load config if not already loaded
-        if not ctx.obj or 'config' not in ctx.obj:
-            from ..core.config_service import ConfigurationService
-            config_service = ConfigurationService()
-            config = config_service.load_config()
-            if not ctx.obj:
-                ctx.obj = {}
-            ctx.obj['config'] = config
-
-        config = ctx.obj['config']
-
-        # Check if command should be available in current context
-        if config.is_project_context:
-            # In project context, only allow project commands
-            project_commands = ['activate', 'handoff', 'status', 'end-session', 'decision']
-            if cmd_name not in project_commands:
-                return None
-        else:
-            # In global context, only allow global commands
-            global_commands = ['init', 'list-workflows', 'config']
-            if cmd_name not in global_commands:
-                return None
-
-        # First try to get the command normally
-        cmd = super().get_command(ctx, cmd_name)
-        if cmd is not None:
-            return cmd
-
-        # If command not found, try to load it dynamically
-        if config.is_project_context:
-            # In project context, try project commands
-            from .commands.workflow import activate, handoff, status, end_session, decision
-            project_commands = {
-                'activate': activate,
-                'handoff': handoff,
-                'status': status,
-                'end-session': end_session,
-                'decision': decision
-            }
-            return project_commands.get(cmd_name)
-        else:
-            # In global context, try global commands
-            from .commands.workflow import init, list_workflows
-            from .commands.global_commands import config
-            global_commands = {
-                'init': init,
-                'list-workflows': list_workflows,
-                'config': config
-            }
-            return global_commands.get(cmd_name)
-
-        return None
+    """
+    Smart Command Router.
+    Dynamically exposes commands based on whether the user is inside a project.
+    """
 
     def list_commands(self, ctx: click.Context) -> list[str]:
-        """List commands based on current context."""
-        # Load config if not already loaded
-        if not ctx.obj or 'config' not in ctx.obj:
-            from ..core.config_service import ConfigurationService
-            config_service = ConfigurationService()
-            config = config_service.load_config()
-            if not ctx.obj:
-                ctx.obj = {}
-            ctx.obj['config'] = config
-
-        config = ctx.obj['config']
+        """Return available commands based on current context."""
+        config = self._get_config(ctx)
 
         if config.is_project_context:
-            # Project context commands
-            return ['activate', 'handoff', 'status', 'end-session', 'decision']
+            # Inside a project: Active Workflow Focus
+            return ['status', 'activate', 'handoff', 'decision', 'end', 'feedback', 'blocker', 'iteration', 'assumption', 'list-pending', 'list-blockers']
         else:
-            # Global context commands
-            return ['init', 'list-workflows', 'config']
+            # Global Root: System & Management Focus
+            return ['init', 'list', 'delete', 'config', 'workflows']
+
+    def get_command(self, ctx: click.Context, cmd_name: str):
+        """Map command string to actual function implementation."""
+        config = self._get_config(ctx)
+
+        # 1. Project Context Routing
+        if config.is_project_context:
+            mapping = {
+                'status': project_ops.status,
+                'activate': active_session.activate,
+                'handoff': active_session.handoff,
+                'decision': active_session.decision,
+                'end': active_session.end_session,  # Alias 'end' -> 'end_session'
+                'check-handoff': active_session.check_handoff,
+                'feedback': active_session.feedback,
+                'blocker': active_session.blocker,
+                'iteration': active_session.iteration,
+                'assumption': active_session.assumption,
+                'list-pending': project_ops.list_pending,
+                'list-blockers': project_ops.list_blockers,
+            }
+            return mapping.get(cmd_name)
+
+        # 2. Global Context Routing
+        else:
+            mapping = {
+                'init': global_ops.init,
+                'list': project_ops.list_projects,    # Alias 'list' -> 'list_projects'
+                'delete': project_ops.delete_project, # Alias 'delete' -> 'delete_project'
+                'config': global_ops.config,
+                'workflows': global_ops.list_workflows # Alias 'workflows' -> 'list_workflows'
+            }
+            return mapping.get(cmd_name)
+
+    def _get_config(self, ctx: click.Context):
+        """Helper to ensure config is loaded only once."""
+        if not ctx.obj or 'config' not in ctx.obj:
+            service = ConfigurationService()
+            # Determine context silently to avoid noise during tab-completion
+            config = service.load_config(verbose=False)
+            if not ctx.obj: ctx.obj = {}
+            ctx.obj['config'] = config
+        return ctx.obj['config']
 
 
 def show_version(ctx, param, value):
-    """Callback to display styled version information."""
+    """Callback to display styled version."""
     if value:
         from rich.panel import Panel
-        from rich.text import Text
-
-        version_text = Text(f"Agentic Workflow v{__version__}", style="bold cyan")
-        panel = Panel(version_text, title="[bold blue]Version[/bold blue]", border_style="blue")
-        console.print(panel)
+        console.print(Panel(f"[bold cyan]Agentic Workflow OS v{__version__}[/]", border_style="blue"))
         ctx.exit()
 
 
 @click.group(cls=ContextAwareGroup, invoke_without_command=True)
-@click.option('--version', is_flag=True, callback=show_version, expose_value=False, help='Show version and exit')
+@click.option('--version', is_flag=True, callback=show_version, expose_value=False, help='Show version')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
-@click.option('--force', '-f', is_flag=True, help='Force operations')
+@click.option('--force', '-f', is_flag=True, help='Force operations (bypass safety checks)')
 @click.pass_context
 def cli(ctx: click.Context, verbose: bool, force: bool):
-    """Agentic Workflow — Multi-agent planning system.
-
-    A comprehensive platform for managing complex software projects through
-    orchestrated agent workflows.
     """
-    # Initialize context object
+    Agentic Workflow OS — Context-Aware Orchestration Engine.
+    
+    The available commands change based on your directory.
+    Run 'agentic init' to start a new project.
+    """
     ctx.ensure_object(dict)
-
-    # Load configuration with context awareness
-    config_service = ConfigurationService()
-    runtime_config = config_service.load_config(verbose=verbose, force=force)
-
-    # Setup logging after config is loaded
-    from .utils import setup_logging
-    setup_logging(verbose=verbose, log_level=runtime_config.system.log_level if hasattr(runtime_config, 'system') else "INFO")
-
-    # Store in context
-    ctx.obj['config'] = runtime_config
+    
+    # 1. Load Config (Hydration)
+    service = ConfigurationService()
+    # Force flag overrides runtime strictness
+    config = service.load_config(verbose=verbose, force=force)
+    
+    # 2. Setup Logging
+    setup_logging(verbose=verbose, log_level=config.system.log_level.value)
+    
+    # 3. Store in Context
+    ctx.obj['config'] = config
     ctx.obj['console'] = console
 
-    # Add context-aware commands dynamically
-    add_context_commands(cli, runtime_config)
-
-    # If no subcommand provided, launch TUI
+    # 4. TUI Fallback (If no subcommand)
     if ctx.invoked_subcommand is None:
-        run_tui_mode(runtime_config)
+        run_tui_mode(config)
 
 
 def run_tui_mode(config: RuntimeConfig):
-    """Entry point for TUI with error boundary."""
+    """Launch the interactive Text User Interface."""
     try:
         from .tui.main import TUIApp
         app = TUIApp(config)
         app.run()
-    except AgenticWorkflowError as e:
-        # Business Logic Errors (Governance, Config, etc.)
-        _display_error_modal(str(e), title="Operation Failed")
-        # Restarting the loop or exiting depends on severity,
-        # usually we return to main menu or exit gracefully.
     except Exception as e:
-        # Unexpected crashes - show stack trace in TUI
-        console.clear()
-        from rich.panel import Panel
-        from rich.text import Text
-        error_text = Text(f"An unexpected error occurred:\n{str(e)}", style="red")
-        panel = Panel(error_text, title="[bold red]Critical Error[/bold red]", border_style="red")
-        console.print(panel)
+        # Fallback error handling if TUI crashes hard
         console.print_exception()
-        input("\nPress Enter to exit...")
-        raise
+        sys.exit(1)
 
 
-def _display_error_modal(message: str, title: str = "Error"):
-    """Display an error modal in the TUI."""
-    console.clear()
-    from rich.panel import Panel
-    error_panel = Panel(
-        f"[bold white]{message}[/bold white]",
-        title=f"[bold red]{title}[/bold red]",
-        border_style="red",
-        padding=(1, 2)
-    )
-    console.print(error_panel)
-    input("\nPress Enter to exit...")
-
-
-# Dynamic command registration based on context
-def add_context_commands(cli_group: click.Group, config: RuntimeConfig):
-    """Add commands based on current context."""
-    if config.is_project_context:
-        # Project mode commands - direct commands for context-aware usage
-        from .commands.workflow import activate, handoff, status, end_session
-        cli_group.add_command(activate)
-        cli_group.add_command(handoff)
-        cli_group.add_command(status)
-        cli_group.add_command(end_session)
-    else:
-        # Global mode commands
-        from .commands.workflow import init, list_workflows
-        from .commands.global_commands import config
-        cli_group.add_command(init)
-        cli_group.add_command(list_workflows)
-        cli_group.add_command(config)
-
-
-# Add all commands statically for help to work
-from .commands.workflow import init, list_workflows, activate, handoff, status, end_session
-from .commands.global_commands import config
-
-cli.add_command(init)
-cli.add_command(list_workflows)
-cli.add_command(config)
-cli.add_command(activate)
-cli.add_command(handoff)
-cli.add_command(status)
-cli.add_command(end_session)
-
+# Static Registration (Required for click help generation to work mostly correctly)
+# We register them, but ContextAwareGroup hides/shows them dynamically.
+cli.add_command(global_ops.init)
+cli.add_command(global_ops.config)
+cli.add_command(active_session.activate)
+cli.add_command(project_ops.status)
 
 if __name__ == "__main__":
-    import sys
-    from agentic_workflow.core.exceptions import AgenticWorkflowError
-
     try:
         cli()
     except AgenticWorkflowError as e:
-        display_error(f"[red]Error:[/red] {e}")
+        display_error(str(e))
         sys.exit(1)
     except Exception as e:
-        display_error(f"[red]Unexpected Error:[/red] {e}")
-        if "--debug" in sys.argv:
-            raise
+        display_error(f"Unexpected system error: {e}")
         sys.exit(1)

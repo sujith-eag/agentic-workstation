@@ -4,12 +4,12 @@ Provides write_log() function for appending structured entries to both
 human-readable Markdown and machine-parseable YAML ledgers.
 """
 import datetime
+import sys
 from datetime import timezone
 from pathlib import Path
 import yaml
 
 from agentic_workflow.core.paths import PROJECTS_DIR
-from agentic_workflow.cli.utils import display_error, display_success, display_info
 
 
 def _resolve_paths(project_dir: Path, log_file: str):
@@ -251,6 +251,7 @@ def _rebuild_md_from_ledger(yaml_path: Path, md_path: Path):
 
 if __name__ == "__main__":
     # Simple CLI for manual use
+    from agentic_workflow.cli.utils import display_error, display_success, display_info
     if len(sys.argv) < 7:
         display_info("Usage: python3 -m scripts.ledger.log_write")
         sys.exit(1)

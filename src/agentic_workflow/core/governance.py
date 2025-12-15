@@ -149,15 +149,13 @@ class GovernanceEngine:
                     enabled=rule_config.get('enabled', default_rule.enabled)
                 ))
             else:
-                # Custom rule defined in config (requires implementing custom condition logic separate from this mechanism, 
-                # or here we define a placeholder that always passes if no condition is provided)
-                # For safety, dynamic rules without code backing default to lenient/pass.
+                # Custom rule defined in config - use dynamic condition evaluation
                 self.register_rule(GovernanceRule(
                     name=rule_config.get('name', rule_name),
                     description=rule_config.get('description', ''),
                     context=rule_config.get('context', GOVERNANCE_CONTEXT_INIT),
                     level=rule_config.get('level', GOVERNANCE_LEVEL_MODERATE),
-                    condition=lambda data: True,  # Default: always pass for purely config-defined rules
+                    condition=self._create_dynamic_condition(rule_config),
                     error_message=rule_config.get('error_message', f'Rule {rule_name} failed'),
                     fix_suggestion=rule_config.get('fix_suggestion'),
                     enabled=rule_config.get('enabled', True)
@@ -167,6 +165,59 @@ class GovernanceEngine:
         for rule_name, rule in default_rules.items():
             if rule_name not in self.rules:
                 self.register_rule(rule)
+
+    def _create_dynamic_condition(self, rule_config: Dict) -> Callable:
+        """
+        Create a dynamic condition function from declarative rule configuration.
+
+        Translates YAML/JSON rule definitions into executable logic that evaluates:
+        - required_files: Check if files exist relative to project path
+        - required_context: Check if keys exist in agent/project data
+        - blocked_by: Check if agent ID is in blocked list
+
+        Args:
+            rule_config: Dictionary containing rule configuration keys
+
+        Returns:
+            Callable that takes data dict and returns bool
+        """
+        def dynamic_condition(data: Dict[str, Any]) -> bool:
+            # Check required files
+            required_files = rule_config.get('required_files', [])
+            if required_files:
+                project_path = Path(data.get('project', {}).get('path', ''))
+                if not project_path.exists():
+                    logger.warning(f"Project path does not exist: {project_path}")
+                    return False
+
+                for file_path in required_files:
+                    full_path = project_path / file_path
+                    if not full_path.exists():
+                        logger.debug(f"Required file missing: {full_path}")
+                        return False
+
+            # Check required context keys
+            required_context = rule_config.get('required_context', [])
+            if required_context:
+                agent_data = data.get('agent', {})
+                project_data = data.get('project', {})
+
+                for key in required_context:
+                    if key not in agent_data and key not in project_data:
+                        logger.debug(f"Required context key missing: {key}")
+                        return False
+
+            # Check blocked agents
+            blocked_by = rule_config.get('blocked_by', [])
+            if blocked_by:
+                agent_id = data.get('agent', {}).get('id', '')
+                if agent_id in blocked_by:
+                    logger.debug(f"Agent {agent_id} is blocked by rule")
+                    return False
+
+            return True
+
+        return dynamic_condition
 
     def _get_default_rules(self) -> Dict[str, GovernanceRule]:
         """

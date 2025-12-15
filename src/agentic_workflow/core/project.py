@@ -65,7 +65,6 @@ def load_project_meta(project_name: str) -> Optional[Dict[str, Any]]:
     This is the canonical function for loading project metadata.
     Replaces duplicate implementations in:
     - session/gate_checker.py
-    - session/invoke_agent.py
     - session/stage_manager.py
     - session/sync_planning.py
     - session/activate_agent.py

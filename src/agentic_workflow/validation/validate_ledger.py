@@ -34,21 +34,37 @@ def validate_handoff(data):
     return errors
 
 
-def validate_workflow_handoff(project_name: str, from_agent: str, to_agent: str) -> list:
+def validate_workflow_handoff(project_name: str, from_agent: str, to_agent: str, artifacts: list = None) -> list:
     """
-    Validate that a handoff is allowed according to the workflow definition.
+    Validate that a handoff is allowed according to the workflow definition and governance rules.
     
     Args:
         project_name: Name of the project
         from_agent: Agent initiating the handoff
         to_agent: Agent receiving the handoff
+        artifacts: List of artifact names being handed off
         
     Returns:
         List of validation error messages
     """
     errors = []
+    artifacts = artifacts or []
     
     try:
+        # Load configuration
+        from agentic_workflow.core.config_service import ConfigurationService
+        config_service = ConfigurationService()
+        config = config_service.load_config()
+        
+        # Get project path
+        if config.is_project_context and config.project:
+            project_path = str(config.project.root_path)
+        else:
+            # Fallback: construct path
+            from agentic_workflow.core.path_resolution import get_projects_dir
+            projects_dir = get_projects_dir(config.system)
+            project_path = str(projects_dir / project_name)
+        
         # Get workflow name from project config
         from agentic_workflow.core.project import get_project_workflow_name
         workflow_name = get_project_workflow_name(project_name)
@@ -73,14 +89,39 @@ def validate_workflow_handoff(project_name: str, from_agent: str, to_agent: str)
             errors.append(f"target agent '{to_agent}' not found in workflow '{workflow_name}'")
             return errors
             
-        # For now, allow any handoff between valid agents
-        # TODO: Implement proper handoff validation based on workflow rules
-        return []
+        # Run governance validation
+        from agentic_workflow.core.governance import GovernanceEngine
+        
+        # Determine strictness level from project config
+        strictness = 'strict' if (config.project and config.project.strict_mode) else 'moderate'
+        
+        # Prepare governance config
+        governance_config = {
+            'strictness': {'level': strictness}
+        }
+        
+        engine = GovernanceEngine({'governance': governance_config})
+        
+        # Prepare data for governance validation
+        data = {
+            'from_agent': from_agent,
+            'to_agent': to_agent,
+            'artifacts': artifacts,
+            'project_path': project_path,
+            'project': {'name': project_name, 'workflow': workflow_name},
+            'agent': {'id': from_agent}  # Source agent context
+        }
+        
+        # Validate
+        result = engine.validate('handoff', data, strictness)
+        if not result.passed:
+            for violation in result.violations:
+                errors.append(f"Governance violation: {violation['error_message']}")
+        
+        return errors
         
     except Exception as e:
         return [f"validation error: {str(e)}"]
-        
-    return errors
 
 
 def validate_feedback(data):

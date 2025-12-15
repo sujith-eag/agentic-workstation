@@ -6,13 +6,16 @@ Provides interactive menus and guided workflows for better UX.
 import questionary
 from pathlib import Path
 import sys
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from ..utils import is_in_project, get_project_root, display_error, display_success, display_info, display_warning
-from ..handlers.project_handlers import ProjectHandlers
-from ..handlers.workflow_handlers import WorkflowHandlers
-from ..handlers.session_handlers import SessionHandlers
-from ..handlers.entry_handlers import EntryHandlers
+from ..handlers import (
+    ProjectHandlers,
+    WorkflowHandlers,
+    SessionHandlers,
+    EntryHandlers,
+    QueryHandlers
+)
 from agentic_workflow.core.exceptions import AgenticWorkflowError
 from agentic_workflow import __version__
 
@@ -24,14 +27,15 @@ class TUIApp:
         self.config = config
         self.current_context = "project" if config and config.is_project_context else "global"
         self.project_root = config.project.root_path if config and config.project else None
+        # Note: session_context removed - controllers now fetch fresh data from services
         self.project_handlers = ProjectHandlers()
         self.workflow_handlers = WorkflowHandlers()
         self.session_handlers = SessionHandlers(config)
         self.entry_handlers = EntryHandlers()
+        self.query_handlers = QueryHandlers()
         
         # Initialize operations
-        from .operations import AgentOperations, ArtifactOperations
-        self.agent_ops = AgentOperations(self)
+        from .operations import ArtifactOperations
         self.artifact_ops = ArtifactOperations(self)
         
         # Initialize controllers
@@ -105,8 +109,6 @@ class TUIApp:
             display_error(f"Failed to list projects: {e}")
 
         questionary.press_any_key_to_continue().ask()
-
-
 
 
 def main():

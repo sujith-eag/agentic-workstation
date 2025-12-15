@@ -3,13 +3,13 @@
 {#- Generate CLI commands array with actual values -#}
 {% macro cli_commands(agent_id, next_agent_id=None, workflow_name='planning') %}
 cli_commands:
-  - "./workflow status"
-  - "./workflow decision --title '...' --rationale '...'"
-  - "./workflow assumption --title '...' --reasoning '...'"
+  - "agentic status"
+  - "agentic decision --title '...' --rationale '...'"
+  - "agentic assumption --assumption '...' --rationale '...'"
 {%- if next_agent_id %}
-  - "./workflow handoff --from {{ agent_id }} --to {{ next_agent_id }} --artifacts '...'"
+  - "agentic handoff --to {{ next_agent_id }} --artifacts '...' --notes '...'"
 {%- else %}
-  - "./workflow end --summary '...'"
+  - "agentic end"
 {%- endif %}
 {% endmacro %}
 

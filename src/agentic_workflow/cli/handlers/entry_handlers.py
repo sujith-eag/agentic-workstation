@@ -61,7 +61,7 @@ class EntryHandlers:
 
             # Validate handoff against workflow rules
             from ...validation.validate_ledger import validate_workflow_handoff
-            workflow_errors = validate_workflow_handoff(project, from_agent, to_agent)
+            workflow_errors = validate_workflow_handoff(project, from_agent, to_agent, artifact_list)
             if workflow_errors:
                 error_msg = f"Workflow validation failed: {'; '.join(workflow_errors)}"
                 raise CLIExecutionError(error_msg)
@@ -164,9 +164,21 @@ class EntryHandlers:
             validate_required(severity, "severity", "feedback")
             validate_required(summary, "summary", "feedback")
 
-            # Placeholder - implement feedback logic
-            logger.info(f"Recording feedback for {target} in project '{project}'")
-            display_success(f"Feedback recorded for {target}")
+            # Get active agent as reporter
+            active_session = self.ledger_service.get_active_session(project)
+            if not active_session:
+                raise CLIExecutionError("No active agent session found. Please activate an agent first.")
+            reporter = active_session.get('agent_id')
+
+            # Record feedback
+            result = self.ledger_service.record_feedback(
+                project_name=project,
+                reporter=reporter,
+                target=target,
+                severity=severity,
+                summary=summary
+            )
+            display_success(f"Feedback recorded for {target} (ID: {result['entry_id']})")
 
         except Exception as e:
             handle_error(e, "feedback recording", {"project": project, "target": target})
@@ -174,7 +186,10 @@ class EntryHandlers:
     def handle_iteration(
         self,
         project: str,
-        trigger: str
+        trigger: str,
+        impacted_agents: List[str],
+        description: str,
+        version_bump: str = 'patch'
     ) -> None:
         """
         Handle iteration recording command.
@@ -182,6 +197,9 @@ class EntryHandlers:
         Args:
             project: Project name (required)
             trigger: Iteration trigger (required)
+            impacted_agents: List of impacted agent IDs (required)
+            description: Iteration description (required)
+            version_bump: Version bump type (optional, default 'patch')
 
         Raises:
             CLIExecutionError: If iteration recording fails
@@ -189,10 +207,18 @@ class EntryHandlers:
         try:
             validate_required(project, "project", "iteration")
             validate_required(trigger, "trigger", "iteration")
+            validate_required(impacted_agents, "impacted_agents", "iteration")
+            validate_required(description, "description", "iteration")
 
-            # Placeholder - implement iteration logic
-            logger.info(f"Recording iteration in project '{project}': {trigger}")
-            display_success(f"Iteration recorded: {trigger}")
+            # Record iteration
+            result = self.ledger_service.record_iteration(
+                project_name=project,
+                trigger=trigger,
+                impacted_agents=impacted_agents,
+                description=description,
+                version_bump=version_bump
+            )
+            display_success(f"Iteration recorded: {trigger} (ID: {result['entry_id']})")
 
         except Exception as e:
             handle_error(e, "iteration recording", {"project": project, "trigger": trigger})
@@ -226,25 +252,39 @@ class EntryHandlers:
     def handle_assumption(
         self,
         project: str,
-        text: str
+        assumption: str,
+        rationale: str
     ) -> None:
         """
         Handle assumption recording command.
 
         Args:
             project: Project name (required)
-            text: Assumption text (required)
+            assumption: Assumption text (required)
+            rationale: Rationale for the assumption (required)
 
         Raises:
             CLIExecutionError: If assumption recording fails
         """
         try:
             validate_required(project, "project", "assumption")
-            validate_required(text, "text", "assumption")
+            validate_required(assumption, "assumption", "assumption")
+            validate_required(rationale, "rationale", "assumption")
 
-            # Placeholder - implement assumption logic
-            logger.info(f"Recording assumption in project '{project}': {text}")
-            display_success(f"Assumption recorded")
+            # Get active agent
+            active_session = self.ledger_service.get_active_session(project)
+            if not active_session:
+                raise CLIExecutionError("No active agent session found. Please activate an agent first.")
+            agent_id = active_session.get('agent_id')
+
+            # Record assumption
+            result = self.ledger_service.record_assumption(
+                project_name=project,
+                agent_id=agent_id,
+                assumption=assumption,
+                rationale=rationale
+            )
+            display_success(f"Assumption recorded (ID: {result['entry_id']})")
 
         except Exception as e:
             handle_error(e, "assumption recording", {"project": project})
@@ -253,7 +293,8 @@ class EntryHandlers:
         self,
         project: str,
         title: str,
-        description: str
+        description: str,
+        blocked_agents: Optional[List[str]] = None
     ) -> None:
         """
         Handle blocker recording command.
@@ -262,6 +303,7 @@ class EntryHandlers:
             project: Project name (required)
             title: Blocker title (required)
             description: Blocker description (required)
+            blocked_agents: List of blocked agent IDs (optional)
 
         Raises:
             CLIExecutionError: If blocker recording fails
@@ -271,9 +313,21 @@ class EntryHandlers:
             validate_required(title, "title", "blocker")
             validate_required(description, "description", "blocker")
 
-            # Placeholder - implement blocker logic
-            logger.info(f"Recording blocker in project '{project}': {title}")
-            display_success(f"Blocker recorded: {title}")
+            # Get active agent as reporter
+            active_session = self.ledger_service.get_active_session(project)
+            if not active_session:
+                raise CLIExecutionError("No active agent session found. Please activate an agent first.")
+            reporter = active_session.get('agent_id')
+
+            # Record blocker
+            result = self.ledger_service.record_blocker(
+                project_name=project,
+                reporter=reporter,
+                title=title,
+                description=description,
+                blocked_agents=blocked_agents
+            )
+            display_success(f"Blocker recorded: {title} (ID: {result['entry_id']})")
 
         except Exception as e:
             handle_error(e, "blocker recording", {"project": project, "title": title})

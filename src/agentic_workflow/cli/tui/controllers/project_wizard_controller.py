@@ -7,7 +7,7 @@ This module contains controllers for guided workflows and wizards.
 import questionary
 
 from .base_controller import BaseController
-from ...utils import display_error, display_info, display_success
+from ...utils import display_error, display_info, display_success, show_progress
 
 
 class ProjectWizardController(BaseController):
@@ -24,7 +24,12 @@ class ProjectWizardController(BaseController):
             return
 
         # Workflow type - get real workflow types
-        workflow_type = self._select_workflow_type()
+        try:
+            workflow_type = self._select_workflow_type()
+        except Exception as e:
+            display_error(f"Failed to load workflows: {e}")
+            questionary.press_any_key_to_continue().ask()
+            return
 
         # Description
         description = questionary.text("Project description:").ask()
@@ -35,12 +40,14 @@ class ProjectWizardController(BaseController):
         if confirm:
             try:
                 # Use session handlers for proper atomic pipeline initialization
-                self.app.session_handlers.handle_init(
-                    project=name,
-                    workflow=workflow_type,
-                    description=description,
-                    force=False
-                )
+                with show_progress(f"Creating project '{name}'..."):
+                    self.app.session_handlers.handle_init(
+                        project=name,
+                        workflow=workflow_type,
+                        description=description,
+                        force=False
+                    )
+                display_success(f"Project '{name}' created successfully!")
                 questionary.press_any_key_to_continue().ask()
             except Exception as e:
                 display_error(f"Failed to create project: {e}")
@@ -51,7 +58,7 @@ class ProjectWizardController(BaseController):
     def _select_workflow_type(self) -> str:
         """Select workflow type with dynamic loading."""
         try:
-            from ...services import WorkflowService
+            from agentic_workflow.services import WorkflowService
             workflow_service = WorkflowService()
             workflows = workflow_service.list_workflows()
             workflow_choices = []
@@ -62,14 +69,10 @@ class ProjectWizardController(BaseController):
                     "name": f"{workflow['name']} - {desc}",
                     "value": workflow['name']
                 })
-        except Exception:
-            # Fallback to known workflows
-            workflow_choices = [
-                {"name": "planning - Comprehensive project planning", "value": "planning"},
-                {"name": "research - Academic research workflow", "value": "research"},
-                {"name": "implementation - Test-driven development", "value": "implementation"},
-                {"name": "workflow-creation - Meta-workflow creation", "value": "workflow-creation"}
-            ]
+        except Exception as e:
+            # No fallback - rely on WorkflowService as single source of truth
+            from agentic_workflow.core.exceptions import AgenticWorkflowError
+            raise AgenticWorkflowError("No workflows found. System may be corrupt.") from e
 
         return questionary.select(
             "Select workflow type:",

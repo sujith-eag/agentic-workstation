@@ -17,13 +17,13 @@ stage: {{ stage.id if stage.id else stage.name }}
 project_name: {{ project_name }}
 context_file: agent_context/{{ workflow_name }}_context_index.md
 cli_commands:
-  - "./workflow status"
-  - "./workflow decision --title '...' --rationale '...'"
-  - "./workflow assumption --title '...' --reasoning '...'"
+  - "agentic status"
+  - "agentic decision --title '...' --rationale '...'"
+  - "agentic assumption --assumption '...' --rationale '...'"
 {% if next_agent_id %}
-  - "./workflow handoff --from {{ agent_id }} --to {{ next_agent_id }} --artifacts '{{ required_artifacts | join(', ') if required_artifacts else '...' }}'"
+  - "agentic handoff --to {{ next_agent_id }} --artifacts '{{ required_artifacts | join(', ') if required_artifacts else '...' }}' --notes '...'"
 {% else %}
-  - "./workflow end --summary '...'"
+  - "agentic end"
 {% endif %}
 ---
 {% endblock %}

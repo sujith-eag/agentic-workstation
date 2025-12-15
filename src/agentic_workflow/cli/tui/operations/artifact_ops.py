@@ -9,14 +9,18 @@ from pathlib import Path
 from typing import List, Tuple, Any
 import questionary
 
-from .base_operations import BaseOperations
 from ...utils import display_error, display_info
 from rich.console import Console
+from ..views import ArtifactListView, ArtifactContentView
 
 console = Console()
 
 
-class ArtifactOperations(BaseOperations):
+class ArtifactOperations:
+    """Operations for browsing and displaying project artifacts."""
+
+    def __init__(self, app):
+        self.app = app
     """Operations for browsing and displaying project artifacts."""
 
     def execute(self, *args, **kwargs) -> Any:
@@ -55,17 +59,13 @@ class ArtifactOperations(BaseOperations):
         """Display the content of an artifact file."""
         try:
             console.clear()
-            display_info(f"📄 {relative_path}")
-            display_info("")
 
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
-            # Show content (truncated if too long)
-            if len(content) > 2000:
-                console.print(content[:2000] + "\n[dim]... (truncated)[/dim]")
-            else:
-                console.print(content)
+            # Use ArtifactContentView for structured display
+            view = ArtifactContentView()
+            view.render(file_path, relative_path, content)
 
             return True
         except Exception as e:

@@ -27,13 +27,9 @@ context_file: {{ context_file | default('agent_context/' ~ workflow_name ~ '_con
 log_file: agent_log/exchange_log.md
 timestamp: {{ timestamp | default('') }}
 cli_commands:
-  - "./workflow status"
-  - "./workflow decision --title '...' --rationale '...'"
-  - "./workflow assumption --title '...' --reasoning '...'"
-  - "./workflow handoff --from {{ agent_id }} --to {{ next_agent_id | default('NEXT') }} --artifacts '...'"
-{% if checkpoint %}
-  - "./workflow checkpoint --validate"
-{% endif %}
+  - "agentic status"
+  - "agentic decision --title '...' --rationale '...'"
+  - "agentic handoff --to {{ next_agent_id | default('NEXT') }} --artifacts '...'"
 ---
 
 # ACTIVE SESSION — {{ agent_id }}
@@ -60,21 +56,13 @@ cli_commands:
 
 ```bash
 # Check session status
-./workflow status
+agentic status
 
 # Log a decision
-./workflow decision --title "..." --rationale "..."
-
-# Log an assumption
-./workflow assumption --title "..." --reasoning "..."
+agentic decision --title "..." --rationale "..."
 
 # Complete handoff
-./workflow handoff --from {{ agent_id }} --to {{ next_agent_id | default('NEXT') }} --artifacts "file1.md,file2.md"
-{% if checkpoint %}
-
-# Validate checkpoint
-./workflow checkpoint --validate
-{% endif %}
+agentic handoff --to {{ next_agent_id | default('NEXT') }} --artifacts "file1.md,file2.md"
 ```
 {% endblock %}
 
@@ -84,6 +72,7 @@ cli_commands:
 1. **Read Context First** — Always review `context_file` before starting work
 2. **Log Decisions** — Use CLI to record all significant decisions
 3. **Log Assumptions** — Document assumptions with reasoning
+4. **Log Assumptions** — Document assumptions with reasoning
 4. **Produce Artifacts** — Write outputs to `artifacts/` directory
 5. **Complete Handoff** — Use CLI for proper handoff with artifact list
 {% endblock %}
@@ -128,6 +117,8 @@ cli_commands:
 
 ---
 
+---
+
 <!-- LAYER 3: SESSION SCRATCHPAD -->
 {% block scratchpad %}
 ## Session Scratchpad
@@ -139,6 +130,18 @@ cli_commands:
 - [ ] Log decisions and assumptions
 
 **Session Started:** {{ timestamp | default('(set by CLI)') }}
+
+{% if handoff_note %}
+**Handoff Notes from {{ previous_agent | default('Previous Agent') }}:**
+{{ handoff_note }}
+{% endif %}
+
+{% if recent_decisions %}
+**Recent Decisions:**
+{% for decision in recent_decisions %}
+- **{{ decision.title }}** ({{ decision.agent | default('Unknown') }}): {{ decision.rationale | truncate(100) }}
+{% endfor %}
+{% endif %}
 
 **Notes:**
 - 

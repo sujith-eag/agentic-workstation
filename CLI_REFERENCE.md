@@ -1,8 +1,8 @@
 # Agentic Workflow OS CLI & TUI Reference
 
-**Version:** 1.0.4
-**Generated:** December 13, 2025
-**Source:** Code Review Analysis
+**Version:** 1.0.5
+**Generated:** December 15, 2025
+**Source:** Code Review Analysis & CLI Implementation
 
 ## Overview
 
@@ -31,8 +31,10 @@ Available when **outside** project directories for system-wide operations.
 | Command | Arguments | Options | Description |
 |---------|-----------|---------|-------------|
 | `init` | `name` | `--workflow`, `--description` | Initialize new project with workflow |
-| `list-workflows` | None | None | List available workflow types |
-| `config` | None | None | Show current configuration |
+| `list` | None | None | List all projects or show details for one |
+| `delete` | `name` | None | Permanently delete a project |
+| `config` | None | None | View or edit global configuration |
+| `workflows` | None | None | List available workflow definitions |
 | (no subcommand) | None | None | Launch TUI in global mode |
 
 #### Project Context Commands (from within project directory)
@@ -44,7 +46,13 @@ Available when **inside** project directories for workflow operations.
 | `activate` | `agent_id` | None | Activate specific agent session |
 | `handoff` | None | `--to`, `--artifacts`, `--from` | Record agent handoff with artifacts (from agent inferred from active session) |
 | `decision` | None | `--title`, `--rationale` | Record project decision |
-| `end-session` | None | None | End current workflow session |
+| `end` | None | None | End current workflow session |
+| `feedback` | None | `--content`, `--target` | Record feedback for an agent or artifact |
+| `blocker` | None | `--title`, `--description`, `--blocked-agents` | Record a blocker that prevents progress |
+| `iteration` | None | `--trigger`, `--impacted-agents`, `--description` | Record an iteration in the development process |
+| `assumption` | None | `--assumption`, `--rationale` | Record an assumption that may affect the project |
+| `list-pending` | None | None | List pending handoffs for the current project |
+| `list-blockers` | None | None | List active blockers for the current project |
 
 ## Usage Examples
 
@@ -56,8 +64,14 @@ Available when **inside** project directories for workflow operations.
 # Initialize a new project
 agentic init my_project --workflow planning --description "My new project"
 
+# List all projects
+agentic list
+
+# Delete a project
+agentic delete my_project
+
 # List available workflows
-agentic list-workflows
+agentic workflows
 
 # Show configuration
 agentic config
@@ -84,8 +98,26 @@ agentic handoff --to A-02 --artifacts "requirements.md,architecture.md"
 # Record project decision
 agentic decision --title "Technology Stack Selection" --rationale "React + Node.js chosen"
 
+# Record feedback
+agentic feedback --content "Good work on requirements" --target "A-02"
+
+# Record a blocker
+agentic blocker --title "API dependency missing" --description "External API not available" --blocked-agents "I-01,I-02"
+
+# Record an iteration
+agentic iteration --trigger "API design review" --impacted-agents "A-03,I-01" --description "Updated API endpoints based on feedback"
+
+# Record an assumption
+agentic assumption --assumption "API will be available by Q1" --rationale "Vendor confirmed timeline"
+
+# List pending handoffs
+agentic list-pending
+
+# List active blockers
+agentic list-blockers
+
 # End workflow session
-agentic end-session
+agentic end
 ```
 
 ### TUI Usage
@@ -110,6 +142,20 @@ agentic --verbose status
 
 # Force operations (use with caution)
 agentic --force init my_project --workflow planning
+
+# Record blocker with multiple blocked agents
+agentic blocker --title "Database migration required" \
+  --description "Legacy data needs migration before deployment" \
+  --blocked-agents "I-02,I-03,I-05"
+
+# Record iteration with detailed description
+agentic iteration --trigger "Security audit findings" \
+  --impacted-agents "A-04,I-04,I-06" \
+  --description "Implementing security recommendations from audit"
+
+# List operations with verbose output
+agentic --verbose list-blockers
+agentic --verbose list-pending
 ```
 
 ## CLI vs TUI
@@ -185,9 +231,22 @@ excluded_paths:
 
 1. **Command not found**: Ensure `agentic` is in your PATH after installation
 2. **Permission denied**: Check file permissions in project directory
-3. **Workflow not found**: Verify workflow name with `agentic list-workflows`
+3. **Workflow not found**: Verify workflow name with `agentic workflows`
 4. **Wrong context**: Make sure you're in the right directory (repo root for global commands, project directory for workflow commands)
 5. **Agent ID format**: Use correct format like `A-01`, `I-02` (not `A01`, `I02`)
+6. **No active session**: Entry commands (feedback, blocker, iteration, assumption) require an active agent session - use `agentic activate <agent_id>` first
+7. **Blocker not showing**: Blockers are filtered by "pending" status - ensure blockers are recorded with correct status
+
+### Context Issues
+
+- **"Command not available in this context"**: You're trying to use project commands from repo root, or global commands from project directory
+- **Solution**: Check your current directory and use `agentic --help` to see available commands
+
+### Entry Command Issues
+
+- **"No active agent session found"**: You must activate an agent before recording feedback, blockers, iterations, or assumptions
+- **"Validation error"**: Check required fields for each command (e.g., blocker needs title and description)
+- **"Blocker not listed"**: Ensure the blocker was recorded with "pending" status and you're in the correct project directory
 
 ### Context Issues
 
@@ -204,6 +263,11 @@ agentic --help
 agentic init --help
 agentic activate --help
 agentic handoff --help
+agentic feedback --help
+agentic blocker --help
+agentic iteration --help
+agentic assumption --help
+agentic list-blockers --help
 ```
 
 ### Context Detection
@@ -217,4 +281,4 @@ Available commands change based on context. Use `agentic --help` to see what's a
 
 ---
 
-*This documentation covers both CLI and TUI interfaces for the Agentic Workflow OS. Last updated: December 11, 2025*
+*This documentation covers both CLI and TUI interfaces for the Agentic Workflow OS. Last updated: December 15, 2025*

@@ -8,6 +8,7 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 import structlog
+from contextlib import contextmanager
 
 console = Console()
 
@@ -110,13 +111,20 @@ def confirm_action(message: str, default: bool = False) -> bool:
     return click.confirm(message, default=default)
 
 
-def show_progress(message: str) -> Progress:
-    """Show a progress indicator."""
-    return Progress(
+@contextmanager
+def show_progress(message: str):
+    """Show a progress indicator as a context manager."""
+    progress = Progress(
         SpinnerColumn(),
         TextColumn(f"[bold green]{message}"),
         console=console,
     )
+    with progress:
+        task = progress.add_task("", total=None)
+        try:
+            yield
+        finally:
+            progress.update(task, completed=100)
 
 
 def display_error(message: str) -> None:

@@ -1,12 +1,21 @@
-#!/usr/bin/env python3
-"""CLI command groups for Agentic Workflow."""
+"""
+CLI Command Modules.
 
-# Import command groups
-from .project import project
-from .workflow import workflow
+These modules define the user-facing command structure using Click.
+They map 1:1 to the domain-specific Handlers.
 
-# Placeholder for future commands
-# from .agent import agent
-# from .dev import dev
+Modules:
+- global_ops: Commands for system config and initialization (init, config).
+- project_ops: Commands for project management (list, status, delete).
+- active_session: Commands for the active work loop (activate, handoff, decision).
+"""
 
-__all__ = ['project', 'workflow']
+from . import global_ops
+from . import project_ops
+from . import active_session
+
+__all__ = [
+    "global_ops",
+    "project_ops",
+    "active_session",
+]

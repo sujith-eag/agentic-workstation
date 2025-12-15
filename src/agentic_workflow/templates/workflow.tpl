@@ -1,17 +1,18 @@
 #!/bin/bash
 # Project-local workflow wrapper for {{ workflow_display_name }}
 # Description: {{ workflow_description | replace('\n', ' ') | replace('"', '\\"') | replace("'", "\\'") }}
-# Auto-resolves repo root and forwards commands to the main CLI.
+#
+# DEPRECATED: This wrapper is no longer needed. Use the context-aware `agentic` CLI instead.
 #
 # Usage (from within project directory):
-#   ./workflow <command> [args...]
+#   agentic <command> [args...]
 #
 # Examples:
-#   ./workflow status
-#   ./workflow handoff --from A01 --to A02 --artifacts "spec.md"
-#   ./workflow decision --title "Use PostgreSQL" --rationale "ACID compliance"
+#   agentic status
+#   agentic handoff --to A02 --artifacts "spec.md"
+#   agentic decision --title "Use PostgreSQL" --rationale "ACID compliance"
 #
-# This wrapper automatically injects the project name, so you don't need to specify it.
+# This script is kept for backward compatibility but redirects to the new CLI.
 
 set -e
 
@@ -37,10 +38,10 @@ REPO_ROOT="$(find_repo_root)"
 
 # Check for command
 if [[ $# -lt 1 ]]; then
-    echo "Usage: ./workflow <command> [args...]"
+    echo "DEPRECATED: This wrapper is deprecated. Use 'agentic --help' instead."
     echo ""
-    echo "Available commands:"
-{% set commands = ['init', 'activate', 'end', 'populate', 'delete', 'handoff', 'decision', 'status', 'check-handoff', 'list-pending', 'list-blockers', 'list-workflows'] %}
+    echo "Available commands (use 'agentic --help' for full list):"
+{% set commands = ['status', 'activate', 'end', 'handoff', 'decision', 'assumption', 'feedback', 'blocker', 'iteration', 'list-pending', 'list-blockers'] %}
 {% for command in commands %}
     echo "  {{ command }}"
 {% endfor %}
@@ -50,15 +51,6 @@ if [[ $# -lt 1 ]]; then
     exit 1
 fi
 
-COMMAND="$1"
-shift
-
-# Commands that don't need project name injected
-case "$COMMAND" in
-    help|--help|-h)
-        PYTHONPATH="$REPO_ROOT/src" exec python3 -m agentic_workflow.cli.main workflow --help
-        ;;
-esac
-
-# Forward to main CLI with project name auto-injected
-PYTHONPATH="$REPO_ROOT/src" exec python3 -m agentic_workflow.cli.main workflow "$COMMAND" "$PROJECT_NAME" "$@"
+# Redirect to new context-aware CLI
+echo "DEPRECATED: ./workflow is deprecated. Use 'agentic' instead."
+exec agentic "$@"

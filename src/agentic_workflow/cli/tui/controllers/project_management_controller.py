@@ -20,10 +20,14 @@ class ProjectManagementController(BaseController):
 
         # Get list of projects for selection
         try:
+            # Use ProjectHandlers for listing projects
+            from ...handlers import ProjectHandlers
+            project_handlers = ProjectHandlers()
+            
+            # Get project data from handlers (same as list_projects)
+            # We need to call the service method directly since handle_list displays output
             from ...services import ProjectService
             project_service = ProjectService()
-
-            # Get project data from service (same as list_projects)
             result = project_service.list_projects()
             projects = result['projects']
 
@@ -95,7 +99,7 @@ class ProjectManagementController(BaseController):
 
         if confirm:
             try:
-                self.app.project_handlers.handle_remove(name=project_name, force=False)
+                self.app.project_handlers.handle_delete(project=project_name, force=False)
                 display_success(f"Project '{project_name}' removed successfully!")
             except Exception as e:
                 display_error(f"Failed to remove project: {e}")

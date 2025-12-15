@@ -2,7 +2,7 @@
 
 > **Structured Architectural Scaffolding for AI Development**
 
-[![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
+[![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Agentic Workflow OS** is a development platform that orchestrates Multi-Agent Systems to plan, architect, and implement complex software projects. Unlike "Chat with Code" tools that rely on messy, unstructured conversation history, this system enforces a **Context-First** philosophy. It treats Agent Context as a file-system state machine, ensuring that your AI Engineer knows exactly what your AI Architect decided.
@@ -83,7 +83,7 @@ The CLI uses a **context-aware design** - commands available depend on whether y
 
 #### Global Commands (from repository root)
 - `agentic init <project>` - Initialize new project with workflow
-- `agentic list-workflows` - List available workflow types
+- `agentic workflows` - List available workflow types
 - `agentic config` - Show configuration
 - `agentic` - Launch TUI (Terminal User Interface)
 
@@ -92,7 +92,7 @@ The CLI uses a **context-aware design** - commands available depend on whether y
 - `agentic activate <agent_id>` - Activate specific agent (e.g., A-01, I-02)
 - `agentic handoff --to A-02 --artifacts "file.md"` - Record agent handoff (from agent inferred from active session)
 - `agentic decision --title "Title" --rationale "Reason"` - Record project decision
-- `agentic end-session` - End current workflow session
+- `agentic end` - End current workflow session
 
 ---
 
@@ -193,7 +193,7 @@ Workflow manifests include `workflow.json`, `agents.json`, `artifacts.json`, etc
 ### Global Commands (from repository root)
 ```bash
 # List available workflows
-agentic list-workflows
+agentic workflows
 
 # Initialize new project
 agentic init MyProject --workflow planning --description "My project description"
@@ -223,7 +223,7 @@ agentic handoff --to A-02 --artifacts "requirements.md,architecture.md"
 agentic decision --title "Technology Stack Selection" --rationale "React + Node.js chosen for full-stack consistency"
 
 # End workflow session
-agentic end-session
+agentic end
 ```
 
 ## ⚙️ Configuration & Governance

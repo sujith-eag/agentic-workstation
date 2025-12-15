@@ -1,7 +1,9 @@
-"""CLI module.
+"""
+Command Line Interface (CLI) Package.
 
-Contains shell script entry points for the workflow system.
-These scripts are meant to be called directly from the command line.
+Contains the entry point (main.py), command definitions, and UI utilities.
 """
 
-__all__ = []
+from .main import cli
+
+__all__ = ["cli"]

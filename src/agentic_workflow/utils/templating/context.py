@@ -161,6 +161,23 @@ class ContextResolver:
         context['timestamp'] = timestamp or ""
         context['context_file'] = f"agent_context/{workflow}_context_index.md"
 
+        # Add live runtime data from ledger
+        from agentic_workflow.ledger.entry_reader import get_handoffs, get_decisions
+        
+        # Get latest handoff
+        handoffs = get_handoffs(project_name, limit=1)
+        if handoffs:
+            handoff = handoffs[0]
+            context['handoff_note'] = handoff.get('notes', '')
+            context['previous_agent'] = handoff.get('from_agent', '')
+        else:
+            context['handoff_note'] = ''
+            context['previous_agent'] = ''
+        
+        # Get recent decisions (limit 5)
+        decisions = get_decisions(project_name, limit=5)
+        context['recent_decisions'] = decisions
+
         # Merge extra substitutions
         if extra_subs:
             context.update(extra_subs)

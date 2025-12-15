@@ -151,10 +151,11 @@ class ProjectService:
             stage = agent.get("stage")
             if stage:
                 return stage
-            # If no stage in agent, look in stages
-            for stage_name, agent_ids in workflow_data.stages.items():
-                if agent_id in agent_ids:
-                    return stage_name
+            # If no stage in agent, look in stages metadata
+            stages = workflow_data.metadata.get('stages', [])
+            for stage_info in stages:
+                if agent_id in stage_info.get('agents', []):
+                    return stage_info.get('id')
             return ""
         except Exception:
             return ""
@@ -162,7 +163,23 @@ class ProjectService:
     def _get_current_stage(self, project_name: str) -> str:
         """Get the current stage of a project."""
         project_meta = self._load_project_config(Path(self.config.system.default_workspace) / project_name / '.agentic' / 'config')
-        return project_meta.get('current_stage', 'INTAKE')
+        current_stage = project_meta.get('current_stage')
+        
+        if current_stage:
+            return current_stage
+        
+        # Default to first stage of the workflow
+        workflow_name = project_meta.get('workflow', 'planning')
+        try:
+            from ..generation.canonical_loader import load_workflow
+            wf = load_workflow(workflow_name)
+            stages = wf.metadata.get('stages', [])
+            if stages:
+                return stages[0].get('id', 'INTAKE')
+        except Exception:
+            pass
+        
+        return 'INTAKE'
 
     def activate_agent(self, project_name: str, agent_id: str) -> Dict[str, Any]:
         """
@@ -184,15 +201,6 @@ class ProjectService:
         if not self.project_exists(project_name):
             raise ProjectNotFoundError(f"Project '{project_name}' not found")
 
-        # Check gates before activation
-        gate_result = self.gate_checker.check_gate(project_name, agent_id)
-        if not gate_result.passed:
-            from ..core.exceptions import GovernanceError
-            if self.config.project.strict_mode:
-                raise GovernanceError(f"Gate check failed for agent {agent_id}: {gate_result.violations}")
-            else:
-                logger.warning(f"Gate check failed for agent {agent_id}, proceeding in lenient mode: {gate_result.violations}")
-
         # Get agent definition for role
         project_meta = self._load_project_config(Path(self.config.system.default_workspace) / project_name / '.agentic' / 'config')
         workflow_name = project_meta.get('workflow', 'planning')
@@ -208,9 +216,24 @@ class ProjectService:
         
         stage_advanced = False
         if agent_stage and agent_stage != current_stage:
-            # Auto-advance to agent's stage
+            # Validate stage transition before auto-advancing
+            from ..session.stage_manager import validate_transition
+            validation_result = validate_transition(project_name, agent_stage)
+            
+            if not validation_result['valid']:
+                if self.config.project.strict_mode:
+                    from ..core.exceptions import GovernanceError
+                    raise GovernanceError(
+                        f"Cannot auto-advance to stage '{agent_stage}' from '{current_stage}': {validation_result['message']}. "
+                        f"Complete current stage requirements before activating agent {agent_id}."
+                    )
+                else:
+                    logger.warning(f"Stage transition validation failed, proceeding in lenient mode: {validation_result['message']}")
+            
+            # Auto-advance to agent's stage (use force only in lenient mode if validation failed)
             from ..session.stage_manager import set_stage
-            stage_result = set_stage(project_name, agent_stage, force=True)
+            force_mode = not validation_result['valid'] and not self.config.project.strict_mode
+            stage_result = set_stage(project_name, agent_stage, force=force_mode)
             if stage_result.get('success'):
                 logger.info(f"Auto-advanced stage from {current_stage} to {agent_stage} for agent {agent_id}")
                 stage_advanced = True

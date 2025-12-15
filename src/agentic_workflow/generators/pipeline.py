@@ -268,6 +268,11 @@ class InitPipeline:
             if not dir_path.exists():
                 dir_path.mkdir(parents=True, exist_ok=True)
 
+        # Create agent_log/archives subdirectory
+        archives_dir = project_model.root_path / "agent_log" / "archives"
+        if not archives_dir.exists():
+            archives_dir.mkdir(parents=True, exist_ok=True)
+
         # Create Agent-Specific Artifact Directories
         workflow_data = project_model.context_data.get('workflow_data', {})
         self._create_agent_dirs(project_model.root_path, workflow_data)
@@ -290,8 +295,8 @@ class InitPipeline:
             if agent_type == 'orchestrator':
                 continue
 
-            if agent_slug:
-                agent_dir = artifacts_root / agent_slug
+            if agent_id and agent_slug:
+                agent_dir = artifacts_root / f"{agent_id}_{agent_slug}"
                 if not agent_dir.exists():
                     agent_dir.mkdir(parents=True, exist_ok=True)
 

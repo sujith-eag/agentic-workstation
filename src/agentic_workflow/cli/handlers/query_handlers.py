@@ -14,19 +14,31 @@ from pathlib import Path
 
 from ...core.exceptions import CLIExecutionError, handle_error, validate_required
 from ...services import LedgerService, ProjectService
-from ..utils import display_action_result, display_info, display_status_panel
+from ..utils import display_action_result, display_info, display_status_panel, display_warning
+from ..ui_utils import format_output
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["QueryHandlers"]
 
 
+"""
+Query command handlers for Agentic Workflow CLI.
+Focus: Read-only status and state queries.
+"""
+
+from typing import Optional
+import logging
+from pathlib import Path
+
+from ...core.exceptions import CLIExecutionError, handle_error, validate_required
+from ...services import LedgerService, ProjectService
+from ..utils import display_action_result, display_info, display_status_panel, display_error, shorten_path
+
+logger = logging.getLogger(__name__)
+
 class QueryHandlers:
-    """Handlers for query-related CLI commands.
-    
-    All handler methods accept keyword arguments directly for clean integration
-    with Click commands. No argparse.Namespace conversion required.
-    """
+    """Handlers for query-related CLI commands."""
 
     def __init__(self):
         self.ledger_service = LedgerService()
@@ -37,29 +49,40 @@ class QueryHandlers:
         project: Optional[str] = None
     ) -> None:
         """
-        Handle project status command.
-
-        Args:
-            project: Project name (optional, auto-detected in project context)
-
-        Raises:
-            CLIExecutionError: If status retrieval fails
+        Handle smart status command.
+        
+        Logic:
+        1. If project arg provided -> Show that project's status.
+        2. If in project context -> Show current project's status.
+        3. If global context -> Show 'Not in project' or System Health (future).
         """
         try:
-            # Auto-detect project if not provided
+            # 1. Determine Project
             if not project:
-                from ...core.config_service import ConfigurationService
-                config_service = ConfigurationService()
-                config = config_service.load_config()
-                if not config.is_project_context:
-                    raise CLIExecutionError("No project specified and not in project context")
-                project = Path.cwd().name  # Use current directory name
+                # We can use ProjectService to detect context safely
+                status_check = self.project_service.get_project_status()
+                if status_check['status'] == 'found':
+                    project = status_check['name']
+                else:
+                    display_error("Not in a project directory")
+                    display_info(f"Current location: {shorten_path(str(Path.cwd()))}")
+                    display_info("Use 'agentic init <name>' to create a new project")
+                    return
 
             logger.info(f"Getting status for project '{project}'")
 
-            status = self.ledger_service.get_status(project)
+            # 2. Get Ledger Status (The "Active" state)
+            ledger_status = self.ledger_service.get_status(project)
+            
+            # 3. Get Config Status (The "Static" state)
+            config_status = self.project_service.get_project_status(project)
 
-            display_status_panel(project, status)
+            # Combine or prioritize (Displaying Ledger Status in the panel)
+            display_status_panel(project, ledger_status)
+            
+            # Optionally show warnings from config status
+            if config_status.get('status') == 'found' and not config_status.get('config'):
+                 display_info("[Warning] Project configuration file is missing/invalid.")
 
         except Exception as e:
             handle_error(e, "status retrieval", {"project": project})
@@ -69,30 +92,29 @@ class QueryHandlers:
         project: str,
         agent_id: str
     ) -> None:
-        """
-        Handle check handoff command.
-
-        Args:
-            project: Project name (required)
-            agent_id: Agent ID to check (required)
-
-        Raises:
-            CLIExecutionError: If handoff check fails
-        """
+        """Check if a handoff exists for an agent."""
         try:
             validate_required(project, "project", "check_handoff")
             validate_required(agent_id, "agent_id", "check_handoff")
-
-            # Placeholder - implement handoff check logic
-            logger.info(f"Checking handoff for {agent_id} in project '{project}'")
-            display_action_result(
-                action=f"Handoff status for {agent_id}: Available",
-                success=True
-            )
-
+            
+            # Query for pending handoffs to this agent
+            pending_handoffs = self.ledger_service.get_pending_handoffs(project, agent_id)
+            
+            if pending_handoffs:
+                # Get the most recent handoff
+                latest_handoff = pending_handoffs[0]  # Assuming sorted by recency
+                from_agent = latest_handoff.get('from_agent', 'Unknown')
+                display_action_result(
+                    action=f"Handoff available from {from_agent}",
+                    success=True,
+                    details=[f"Target: {agent_id}", f"Status: {latest_handoff.get('status', 'pending')}"]
+                )
+            else:
+                display_warning(f"No pending handoff found for {agent_id}")
+            
         except Exception as e:
             handle_error(e, "handoff check", {"project": project, "agent_id": agent_id})
-
+    
     def handle_list_pending(
         self,
         project: str
@@ -109,9 +131,13 @@ class QueryHandlers:
         try:
             validate_required(project, "project", "list_pending")
 
-            # Placeholder - implement pending handoffs logic
-            logger.info(f"Listing pending handoffs for project '{project}'")
-            display_info(f"Pending handoffs in '{project}': None")
+            # Get pending handoffs
+            pending_handoffs = self.ledger_service.get_pending_handoffs(project)
+            
+            if pending_handoffs:
+                format_output(pending_handoffs, format_type='table', title=f"Pending Handoffs in '{project}'")
+            else:
+                display_info("No pending handoffs.")
 
         except Exception as e:
             handle_error(e, "pending handoffs listing", {"project": project})
@@ -132,9 +158,13 @@ class QueryHandlers:
         try:
             validate_required(project, "project", "list_blockers")
 
-            # Placeholder - implement blockers listing logic
-            logger.info(f"Listing blockers for project '{project}'")
-            display_info(f"Active blockers in '{project}': None")
+            # Get active blockers
+            active_blockers = self.ledger_service.get_active_blockers(project)
+            
+            if active_blockers:
+                format_output(active_blockers, format_type='table', title=f"Active Blockers in '{project}'")
+            else:
+                display_info("No active blockers.")
 
         except Exception as e:
             handle_error(e, "blockers listing", {"project": project})

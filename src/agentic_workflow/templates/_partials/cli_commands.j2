@@ -14,23 +14,23 @@
 
 ```bash
 # Start/resume session
-./workflow session --agent {{ agent_id }}
+agentic activate {{ agent_id }}
 
 # Check session status
-./workflow status
+agentic status
 ```
 
 ### Logging Commands
 
 ```bash
 # Record a decision
-./workflow decision --title "Decision Title" --rationale "Why this decision was made"
+agentic decision --title "Decision Title" --rationale "Why this decision was made"
 
 # Record an assumption
-./workflow assumption --title "Assumption Title" --reasoning "Basis for assumption"
+agentic assumption --assumption "Assumption Title" --rationale "Basis for assumption"
 
-# Track artifact update
-./workflow artifact --file "filename.md" --action "created|updated"
+# Record feedback
+agentic feedback --target "A-01" --severity "medium" --summary "Feedback summary"
 ```
 
 ### Handoff Commands
@@ -38,12 +38,12 @@
 {% if next_agent_id %}
 ```bash
 # Handoff to next agent
-./workflow handoff --from {{ agent_id }} --to {{ next_agent_id }} --artifacts "{{ required_artifacts | join(', ') if required_artifacts else 'artifact1.md, artifact2.md' }}"
+agentic handoff --to {{ next_agent_id }} --artifacts "{{ required_artifacts | join(', ') if required_artifacts else 'artifact1.md, artifact2.md' }}" --notes "Handoff notes"
 ```
 {% else %}
 ```bash
 # End workflow (terminal agent)
-./workflow end --summary "Workflow completion summary"
+agentic end
 ```
 {% endif %}
 
@@ -51,23 +51,17 @@
 ### Checkpoint Commands
 
 ```bash
-# View checkpoint status
-./workflow checkpoint --status
-
-# Bypass checkpoint (if allowed)
-./workflow checkpoint-bypass --reason "Reason for bypassing"
+# View checkpoint status (if applicable)
+agentic status
 ```
 {% endif %}
 
 ### Configuration Commands
 
 ```bash
-# View current config
-./workflow config --list
+# View current config (global context)
+agentic config
 
-# Change enforcement mode
-./workflow config --set enforcement.mode lenient
-
-# View effective config
-./workflow config --effective
+# List available workflows (global context)
+agentic workflows
 ```
