@@ -7,7 +7,7 @@ from rich_click import RichCommand
 from ..handlers.session_handlers import SessionHandlers
 from ..handlers.entry_handlers import EntryHandlers
 from ..utils import display_error
-from ...services import LedgerService
+from agentic_workflow.services import LedgerService
 
 # Initialize Handlers
 session_handlers = SessionHandlers()

@@ -24,7 +24,7 @@ class SystemInfoController(BaseController):
         # Count projects using ProjectService
         project_count = 0
         try:
-            from ...services import ProjectService
+            from agentic_workflow.services import ProjectService
             project_service = ProjectService()
             result = project_service.list_projects()
             project_count = result['count']
@@ -34,7 +34,7 @@ class SystemInfoController(BaseController):
         # Count workflows
         workflow_count = 0
         try:
-            from ...services import WorkflowService
+            from agentic_workflow.services import WorkflowService
             workflow_service = WorkflowService()
             workflows = workflow_service.list_workflows()
             workflow_count = len(workflows)

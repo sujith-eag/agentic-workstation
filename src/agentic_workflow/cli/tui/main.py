@@ -96,7 +96,7 @@ class TUIApp:
 
         try:
             # Get project data directly from service
-            from ...services import ProjectService
+            from agentic_workflow.services import ProjectService
             project_service = ProjectService()
             result = project_service.list_projects()
 

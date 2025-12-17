@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Callable
 from importlib import resources
 
 __all__ = [
@@ -22,7 +22,11 @@ __all__ = [
 
 
 def get_package_root() -> Path:
-    """Get package root via resources."""
+    """Resolve the package root Path using importlib.resources or a fallback.
+
+    The function prefers `importlib.resources.files` but falls back to a
+    repository-relative package path when resources are unavailable.
+    """
     try:
         # Check if resources are available
         p = resources.files("agentic_workflow")
@@ -32,40 +36,39 @@ def get_package_root() -> Path:
          return Path(__file__).resolve().parent.parent
 
 def get_manifests_dir() -> Path:
-    """Get manifests directory."""
+    """Return the package `manifests` directory Path inside the package root."""
     return get_package_root() / "manifests"
 
 def get_templates_dir() -> Path:
-    """Get templates directory."""
+    """Return the package `templates` directory Path from package resources or fallback."""
     try:
         return Path(resources.files("agentic_workflow.templates"))
     except Exception:
         return get_package_root() / "templates"
 
 def get_schemas_dir() -> Path:
-    """Get schemas directory."""
+    """Return the package `schemas` directory Path inside the package root."""
     return get_package_root() / "schemas"
 
 def get_projects_dir() -> Path:
-    """Get projects directory (workspace root - parent of repo root)."""
+    """Resolve the projects directory as the parent of the repository root Path."""
     from .path_resolution import find_repo_root
     repo_root = find_repo_root()
     return repo_root.parent
 
 def get_agent_files_dir() -> Path:
-    """Get global agent files directory."""
+    """Resolve the global `agent_files` directory Path for the current repo."""
     from .path_resolution import find_repo_root
     repo_root = find_repo_root()
     return repo_root / "agent_files"
 
 def get_workflow_search_paths(project_root: Optional[Path] = None) -> List[Path]:
-    """
-    Get list of paths to search for workflows.
-    
-    Order:
-    1. Project: <project_root>/.agentic/workflows
-    2. User: <XDG_DATA_HOME>/agentic/workflows
-    3. System: <bundled_manifests>/workflows
+    """Build an ordered list of Paths to search for workflows (project, user, system).
+
+    Order of returned paths:
+    1. Project-local workflows (``<project_root>/.agentic/workflows``)
+    2. User workflows under XDG or platformdirs
+    3. Bundled system workflows inside package manifests
     """
     paths = []
     
@@ -110,6 +113,51 @@ def get_workflow_search_paths(project_root: Optional[Path] = None) -> List[Path]
          
     return paths
 
-# For backward compatibility
-PROJECTS_DIR = get_projects_dir()
-AGENT_FILES_DIR = get_agent_files_dir()
+
+# Lazy-evaluated Path wrapper to avoid executing filesystem resolution at import time
+class _LazyPath:
+    """Lazily compute and proxy a `pathlib.Path` value on first access.
+
+    This preserves backward-compatible module level symbols like
+    `PROJECTS_DIR` while preventing filesystem/path-resolution from
+    running at import time (which breaks the "No Ghost Logic" rule).
+    """
+
+    def __init__(self, factory: Callable[[], Path]):
+        """Store a zero-argument `factory` that returns a `Path` when invoked."""
+        self._factory = factory
+        self._value: Optional[Path] = None
+
+    def _ensure(self) -> None:
+        """Compute and cache the backed `Path` value on first access."""
+        if self._value is None:
+            self._value = self._factory()
+
+    def __getattr__(self, name):
+        """Proxy attribute access to the resolved `Path` after ensuring it exists."""
+        self._ensure()
+        return getattr(self._value, name)
+
+    def __fspath__(self) -> str:
+        """Return the filesystem path string of the resolved Path."""
+        self._ensure()
+        return self._value.__fspath__()
+
+    def __str__(self) -> str:
+        """Return the string form of the resolved Path for display/logging."""
+        self._ensure()
+        return str(self._value)
+
+    def __repr__(self) -> str:
+        """Return a compact representation helpful for debugging the lazy wrapper."""
+        return f"_LazyPath({self._factory.__name__}) -> {repr(self._value)}"
+
+    def __truediv__(self, key):
+        """Support division operator to compose paths (delegates to resolved Path)."""
+        self._ensure()
+        return self._value / key
+
+
+# For backward compatibility: expose lazy-evaluated module symbols that act like Paths
+PROJECTS_DIR = _LazyPath(get_projects_dir)
+AGENT_FILES_DIR = _LazyPath(get_agent_files_dir)

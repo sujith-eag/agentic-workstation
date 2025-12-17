@@ -2,7 +2,7 @@
 
 > **Structured Architectural Scaffolding for AI Development**
 
-[![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
+[![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Agentic Workflow OS** is a development platform that orchestrates Multi-Agent Systems to plan, architect, and implement complex software projects. Unlike "Chat with Code" tools that rely on messy, unstructured conversation history, this system enforces a **Context-First** philosophy. It treats Agent Context as a file-system state machine, ensuring that your AI Engineer knows exactly what your AI Architect decided.
@@ -45,10 +45,11 @@ source myproject-env\Scripts\activate
 ```bash
 pip install agentic-workstation
 
-# Verify installation
+# First run will launch an interactive setup wizard
 agentic --help
-agentic list-workflows
 ```
+
+> **First-Time Setup**: On first run, Agentic Workflow OS will launch an interactive setup wizard to configure your workspace and preferences. This creates `~/.config/agentic/config.yaml` with your settings.
 
 **Option B: From Source (Development)**
 ```bash
@@ -226,10 +227,26 @@ agentic decision --title "Technology Stack Selection" --rationale "React + Node.
 agentic end
 ```
 
-## ⚙️ Configuration & Governance
+## ⚙️ Configuration & Setup
 
-### `.agentic/config.yaml` (Project Config)
-Every project handles its own configuration.
+### Automatic Setup
+On first run, Agentic Workflow OS automatically launches an interactive setup wizard that configures:
+- **Default workspace** (where projects are stored)
+- **Editor command** (for opening files)
+- **UI preferences** and logging levels
+
+### Configuration Files
+
+**Global Config** (`~/.config/agentic/config.yaml`):
+```yaml
+default_workspace: "~/AgenticProjects"
+editor_command: "code"
+tui_enabled: true
+check_updates: true
+log_level: "INFO"
+```
+
+**Project Config** (`.agentic/config.yaml` in each project):
 ```yaml
 workflow: planning
 strict_mode: true
@@ -241,14 +258,37 @@ custom_overrides:
     require_reviews: true
 ```
 
-### Global Config (`~/.config/agentic/config.yaml`)
-Set your preferences for all projects.
-```yaml
-default_workspace: "~/AgenticProjects"
-editor_command: "code"
-tui_enabled: true
-check_updates: true
-log_level: "INFO"
+### Manual Configuration
+If you prefer to set up configuration manually or modify existing settings:
+
+1. **Create global config directory:**
+   ```bash
+   mkdir -p ~/.config/agentic
+   ```
+
+2. **Create config file:**
+   ```bash
+   cat > ~/.config/agentic/config.yaml << 'EOF'
+   default_workspace: "~/AgenticProjects"
+   editor_command: "code"
+   tui_enabled: true
+   check_updates: true
+   log_level: "INFO"
+   EOF
+   ```
+
+3. **Create workspace directory:**
+   ```bash
+   mkdir -p ~/AgenticProjects
+   ```
+
+### Re-running Setup
+To re-run the setup wizard or modify configuration:
+```bash
+# Remove config to trigger setup again
+rm ~/.config/agentic/config.yaml
+agentic
+```
 
 ---
 

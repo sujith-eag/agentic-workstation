@@ -6,7 +6,7 @@ Focus: System configuration and global info.
 from typing import Optional
 import logging
 
-from ...core.exceptions import AgenticWorkflowError
+from agentic_workflow.core.exceptions import AgenticWorkflowError
 from ..utils import display_info, display_error, display_help_panel
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ class GlobalHandlers:
 
     def handle_list_workflows(self) -> None:
         """List available workflow types."""
-        from ...services import WorkflowService
+        from agentic_workflow.services import WorkflowService
         workflow_service = WorkflowService()
         
         try:
@@ -41,13 +41,13 @@ class GlobalHandlers:
 
     def handle_config(self, edit: bool = False) -> None:
         """Show or edit global configuration."""
-        from ...core.config_service import ConfigurationService
+        from agentic_workflow.core.config_service import ConfigurationService
         config_service = ConfigurationService()
         config_path = config_service._get_global_config_path()
 
         if edit:
             import subprocess
-            from ...core.schema import SystemConfig
+            from agentic_workflow.core.schema import SystemConfig
             # Hack: Instantiate default to get editor command if file doesn't exist? 
             # Better to load what exists or default.
             try:

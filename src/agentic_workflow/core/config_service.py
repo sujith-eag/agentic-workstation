@@ -1,7 +1,7 @@
-"""
-Cascading Configuration Service for Agentic Workflow.
+"""Assemble the five-layer configuration cascade into a merged RuntimeConfig.
 
-Implements the 5-layer configuration system:
+Layers: defaults, user-global, project-local, workflow definition, runtime flags.
+
 1. Defaults (hardcoded)
 2. User Global (~/.config/agentic/config.yaml)
 3. Project Local (<project>/.agentic/config.yaml)
@@ -12,7 +12,7 @@ Implements the 5-layer configuration system:
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Optional, TypedDict
 import yaml
 import platformdirs
 try:
@@ -29,20 +29,32 @@ logger = logging.getLogger(__name__)
 __all__ = ["ConfigurationService", "find_project_root", "find_repo_root"]
 
 
+class RawConfig(TypedDict, total=False):
+    """Typed mapping representing raw configuration data loaded from files.
+
+    This TypedDict is permissive (total=False) and used to avoid untyped
+    `dict`/`Any` annotations in public APIs while retaining flexible keys.
+    """
+
+
 class ConfigurationService:
-    """Service for loading and merging the 5-layer configuration cascade."""
+    """Load and merge the five-layer configuration cascade into RuntimeConfig.
+
+    Responsible for loading defaults, user global, project-level, workflow
+    definitions, and runtime flags into a single `RuntimeConfig` instance.
+    """
 
     def __init__(self) -> None:
         """Initialize the ConfigurationService."""
         self.global_config_path = self._get_global_config_path()
 
     def _get_global_config_path(self) -> Path:
-        """Get the path to the global config file."""
+        """Return the global config file path under the user's config directory."""
         config_dir = Path(platformdirs.user_config_dir("agentic", "agentic"))
         return config_dir / "config.yaml"
 
     def ensure_system_configured(self) -> None:
-        """Check for Layer 2 config; trigger TUI if missing and interactive."""
+        """Ensure Layer 2 (global) config exists, running setup if interactive."""
         if not self.global_config_path.exists():
             if sys.stdin.isatty() and sys.stdout.isatty():
                 from ..cli.tui.setup import run_setup_wizard
@@ -52,7 +64,7 @@ class ConfigurationService:
                 self._create_default_config()
 
     def _create_default_config(self) -> None:
-        """Create default global config for headless environments."""
+        """Write a default global `SystemConfig` to disk for headless setups."""
         try:
             config = SystemConfig()
             self.global_config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -62,7 +74,7 @@ class ConfigurationService:
             raise ConfigError(f"Failed to create default config: {e}")
 
     def find_project_root(self, start_path: Optional[Path] = None) -> Optional[Path]:
-        """Find the project root by looking for .agentic/ directory or project_index.md."""
+        """Locate the project root by searching for a .agentic directory or project_index.md."""
         if start_path is None:
             start_path = Path.cwd()
 
@@ -74,7 +86,7 @@ class ConfigurationService:
         return None
 
     def load_config(self, context_path: Optional[Path] = None, verbose: bool = False, force: bool = False) -> RuntimeConfig:
-        """Load the complete merged configuration."""
+        """Load and return the merged `RuntimeConfig` assembled from all layers."""
         self.ensure_system_configured()
 
         config = RuntimeConfig(verbose=verbose, force=force)
@@ -104,30 +116,43 @@ class ConfigurationService:
 
         return config
 
-    def _load_yaml(self, path: Path) -> Dict[str, Any]:
-        """Load YAML file safely."""
+    def _load_yaml(self, path: Path) -> RawConfig:
+        """Read a YAML file and return a typed `RawConfig` mapping.
+
+        Uses `yaml.safe_load` and normalizes the result to an empty mapping
+        when the file contains no data. Raises `ConfigError` on failure.
+        """
         try:
             with open(path, "r") as f:
                 return yaml.safe_load(f) or {}
         except Exception as e:
             raise ConfigError(f"Failed to load config from {path}: {e}")
 
-    def _load_toml(self, path: Path) -> Dict[str, Any]:
-        """Load TOML file safely."""
+    def _load_toml(self, path: Path) -> RawConfig:
+        """Read a TOML file and return a typed `RawConfig` mapping.
+
+        Uses `tomllib` (or `tomli` fallback) to parse TOML data and returns
+        an empty mapping when no data is present. Raises `ConfigError` on failure.
+        """
         try:
             with open(path, "rb") as f:
                 return tomllib.load(f)
         except Exception as e:
             raise ConfigError(f"Failed to load config from {path}: {e}")
 
-    def deep_merge(self, base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
-        """Deep merge two dictionaries."""
-        result = base.copy()
+    def deep_merge(self, base: RawConfig, overlay: RawConfig) -> RawConfig:
+        """Deep-merge two raw configuration mappings and return the merged mapping.
+
+        This performs a recursive merge where nested mappings are merged
+        rather than overwritten.
+        """
+        result: RawConfig = base.copy()
         for key, value in overlay.items():
             if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = self.deep_merge(result[key], value)
+                # Type ignore: recursive TypedDict mapping merging at runtime
+                result[key] = self.deep_merge(result[key], value)  # type: ignore[arg-type]
             else:
-                result[key] = value
+                result[key] = value  # type: ignore[assignment]
         return result
 
 

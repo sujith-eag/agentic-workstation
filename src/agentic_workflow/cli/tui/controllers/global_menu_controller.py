@@ -57,6 +57,10 @@ class GlobalMenuController(BaseController):
         """Execute project management menu."""
         self.app.project_management_controller.execute()
 
+    def execute_system_info(self) -> None:
+        """Execute system information display."""
+        self.app.system_info_controller.execute()
+
     def run_menu(self) -> None:
         """Run the complete global menu loop."""
         choice = self.execute()

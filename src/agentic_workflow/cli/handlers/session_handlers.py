@@ -7,12 +7,12 @@ from pathlib import Path
 from typing import Optional
 import logging
 
-from ...core.exceptions import (
+from agentic_workflow.core.exceptions import (
     ProjectNotFoundError, CLIExecutionError,
     handle_error, validate_required
 )
-from ...services import ProjectService, WorkflowService
-from ...session.gate_checker import GateChecker
+from agentic_workflow.services import ProjectService, WorkflowService
+from agentic_workflow.session.gate_checker import GateChecker
 from ..utils import (
     display_success, display_project_summary, 
     display_action_result, display_info

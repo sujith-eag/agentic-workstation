@@ -12,8 +12,8 @@ from typing import Optional, List
 import logging
 from pathlib import Path
 
-from ...core.exceptions import CLIExecutionError, handle_error, validate_required
-from ...services import LedgerService
+from agentic_workflow.core.exceptions import CLIExecutionError, handle_error, validate_required
+from agentic_workflow.services import LedgerService
 from ..utils import display_action_result, display_success
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ class EntryHandlers:
                 artifact_list = [art.strip() for art in artifacts.split(',')]
 
             # Validate handoff against workflow rules
-            from ...validation.validate_ledger import validate_workflow_handoff
+            from agentic_workflow.validation.validate_ledger import validate_workflow_handoff
             workflow_errors = validate_workflow_handoff(project, from_agent, to_agent, artifact_list)
             if workflow_errors:
                 error_msg = f"Workflow validation failed: {'; '.join(workflow_errors)}"
@@ -111,7 +111,7 @@ class EntryHandlers:
         try:
             # Auto-detect project if not provided
             if not project:
-                from ...core.config_service import ConfigurationService
+                from agentic_workflow.core.config_service import ConfigurationService
                 config_service = ConfigurationService()
                 config = config_service.load_config()
                 if not config.is_project_context:

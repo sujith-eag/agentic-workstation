@@ -7,7 +7,7 @@ configuration system. All configurations are validated using Pydantic V2.
 
 from pydantic import BaseModel, Field, field_validator
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Literal
+from typing import Dict, List, Optional, Any, Literal, TypedDict
 from enum import Enum
 
 
@@ -17,15 +17,50 @@ class LogLevel(str, Enum):
     WARNING = "WARNING"
     ERROR = "ERROR"
 
+    """Enumerate supported logging levels used across the system."""
+
+
+# Public API
+__all__ = [
+    "LogLevel",
+    "SystemConfig",
+    "ProjectConfig",
+    "WorkflowRules",
+    "RuntimeConfig",
+]
+
+
+# TypedDicts for nested workflow structures to expose schema shapes
+class StageSpec(TypedDict, total=False):
+    """Typed shape describing a workflow stage (id, name, description, metadata)."""
+    id: Optional[str]
+    name: Optional[str]
+    description: Optional[str]
+    metadata: Optional[Dict[str, object]]
+
+
+class GateSpec(TypedDict, total=False):
+    """Typed shape describing a workflow gate with condition and transitions."""
+    name: Optional[str]
+    condition: Optional[Dict[str, object]]
+    on_pass: Optional[List[str]]
+    on_fail: Optional[List[str]]
+
+
+class GovernanceSpec(TypedDict, total=False):
+    """Typed mapping for governance rules and strictness levels for a workflow."""
+    rules: Optional[Dict[str, object]]
+    strictness: Optional[Dict[str, str]]
+
 
 class SystemConfig(BaseModel):
-    """
-    Global system configuration (Layer 2).
-    Resides in ~/.config/agentic/config.yaml
+    """Represent global system configuration stored in the user's config file.
+
+    Resides in `~/.config/agentic/config.yaml` and contains workspace and UX settings.
     """
     # Core Workspace Settings
     default_workspace: Path = Field(
-        default=Path.home() / "AgenticProjects",
+        default=Path("~/AgenticProjects"),
         description="Default root directory for all new projects"
     )
     # User Experience
@@ -48,15 +83,17 @@ class SystemConfig(BaseModel):
 
     @field_validator("default_workspace")
     @classmethod
-    def validate_workspace_path(cls, v: Path) -> Path:
-        """Ensure path is absolute and resolvable"""
-        return v.expanduser().resolve()
+    def validate_workspace_path(cls, v) -> Path:
+        """Expand ~ in path and return as Path"""
+        if isinstance(v, str):
+            return Path(v).expanduser()
+        return v.expanduser()
 
 
 class ProjectConfig(BaseModel):
-    """
-    Project-specific configuration (Layer 3).
-    Resides in <project_root>/.agentic/config.yaml
+    """Describe project-specific configuration stored under the project's `.agentic` directory.
+
+    Includes workflow selection, root path, and project-level overrides.
     """
     workflow: str = Field(
         description="Name of the active workflow type"
@@ -72,26 +109,28 @@ class ProjectConfig(BaseModel):
         default_factory=list,
         description="Paths to exclude from processing"
     )
-    custom_overrides: Dict[str, Any] = Field(
+    custom_overrides: Dict[str, object] = Field(
         default_factory=dict,
         description="Workflow-specific overrides"
     )
+    
 
 
 class WorkflowRules(BaseModel):
+    """Model the immutable workflow rules loaded from a workflow package's `workflow.json`.
+
+    Exposes stages, gate definitions, required artifacts and governance metadata.
     """
-    Immutable workflow rules loaded from workflow.json (Layer 4).
-    """
-    stages: List[Dict[str, Any]] = Field(default_factory=list)
-    gates: Dict[str, Any] = Field(default_factory=dict)
+    stages: List[StageSpec] = Field(default_factory=list)
+    gates: Dict[str, GateSpec] = Field(default_factory=dict)
     required_artifacts: List[str] = Field(default_factory=list)
-    governance: Dict[str, Any] = Field(default_factory=dict)
+    governance: GovernanceSpec = Field(default_factory=dict)
 
 
 class RuntimeConfig(BaseModel):
-    """
-    The final merged configuration object used by the engine.
-    Combines all layers with proper precedence.
+    """Represent the final merged runtime configuration used by the engine.
+
+    Combines `SystemConfig`, `ProjectConfig`, and `WorkflowRules` into a single object.
     """
     system: SystemConfig = Field(default_factory=SystemConfig)
     project: Optional[ProjectConfig] = None

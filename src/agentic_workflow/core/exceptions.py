@@ -1,19 +1,38 @@
-"""
-Core exceptions and error handling for Agentic Workflow Platform.
+"""Define the canonical exception hierarchy and error utilities for Agentic Workflow.
 
-This module provides a comprehensive exception hierarchy and error handling
-utilities for consistent error management across the application.
+This module centralizes exception types, structured error context, and
+safe helper functions used across the platform to ensure consistent error
+reporting and structured logs that the architecture mapper can statically
+analyze.
 """
 
-from typing import Dict, Any, Optional, List, Callable
+from typing import Dict, Optional, List, Callable, TypedDict, TypeVar
 from pathlib import Path
 import logging
 
 logger = logging.getLogger(__name__)
 
+
+# Typed structure for error/context payloads so public signatures avoid `Any`/`dict`.
+class ErrorContext(TypedDict, total=False):
+    """Represent structured error context fields for logging and diagnostics.
+
+    Fields should be string-serializable to simplify static analysis.
+    """
+    operation: str
+    error_type: str
+    path: str
+    value_name: str
+    value: str
+
+
+# Generic result type for safe_operation to avoid `Any` in public signatures.
+T = TypeVar("T")
+
 __all__ = [
     # Base Exception
     "AgenticWorkflowError",
+    "AgenticError",
     
     # Configuration Errors
     "ConfigError",
@@ -77,6 +96,7 @@ __all__ = [
     "GovernanceError",
     "ValidationViolation",
     "PolicyConfigurationError",
+    "ManifestError",
     
     # Utility Functions
     "handle_error",
@@ -88,33 +108,35 @@ __all__ = [
 
 
 class AgenticWorkflowError(Exception):
-    """Base exception for all agentic workflow errors.
-    
-    This exception provides structured error handling with error codes,
-    context information, and cause chaining for better debugging and logging.
-    All custom exceptions in the agentic workflow system inherit from this base class.
-    
-    Args:
-        message: Human-readable error message
-        error_code: Machine-readable error code (defaults to class name)
-        context: Additional context dictionary for debugging
-        cause: Original exception that caused this error (for chaining)
+    """Wrap an error message with a machine-readable code and structured context for logging.
+
+    Use this base for all domain-specific exceptions so callers can reliably
+    extract `error_code` and `context` for structured logs and maps.
     """
 
     def __init__(
         self,
         message: str,
         error_code: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
-        cause: Optional[Exception] = None
+        context: Optional["ErrorContext"] = None,
+        cause: Optional[Exception] = None,
     ):
+        """Initialize the exception with `message`, optional `error_code`, and `context`.
+
+        The `context` must be string-serializable and is stored as an `ErrorContext`.
+        """
         super().__init__(message)
         self.message = message
         self.error_code = error_code or self.__class__.__name__
-        self.context = context or {}
+        # Keep a typed, string-serializable context for static mapping
+        self.context: "ErrorContext" = context or {}
         self.cause = cause
 
+    # Exit code to use when this exception should translate to a process exit
+    exit_code = 1
+
     def __str__(self) -> str:
+        """Return a single-line, human-readable representation suitable for logs."""
         parts = [f"[{self.error_code}] {self.message}"]
         if self.context:
             parts.append(f"Context: {self.context}")
@@ -122,259 +144,278 @@ class AgenticWorkflowError(Exception):
             parts.append(f"Cause: {self.cause}")
         return " | ".join(parts)
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert exception to dictionary for logging/serialization."""
-        return {
-            "error_code": self.error_code,
-            "error_message": self.message,
-            "context": self.context,
-            "cause": str(self.cause) if self.cause else None,
-            "exception_type": self.__class__.__name__
+    def to_dict(self) -> Dict[str, str]:
+        """Serialize the exception into a flat mapping of strings for logs.
+
+        This method ensures stable, flat structures suitable for static analysis
+        and structured logging systems.
+        """
+        result: Dict[str, str] = {
+            "error_code": str(self.error_code),
+            "error_message": str(self.message),
+            "exception_type": self.__class__.__name__,
         }
+        for k, v in self.context.items():
+            try:
+                result[k] = str(v)
+            except Exception:
+                result[k] = "<unstringifiable>"
+
+        if self.cause:
+            result["cause"] = str(self.cause)
+
+        return result
 
 
 # Configuration Errors
 class ConfigError(AgenticWorkflowError):
-    """Configuration-related errors."""
-    pass
+    """Represent configuration-related errors during configuration load/merge."""
+    exit_code = 10
 
 
 class ConfigNotFoundError(ConfigError):
-    """Configuration file not found."""
+    """Indicate that a required configuration file was not found."""
     pass
 
 
 class ConfigValidationError(ConfigError):
-    """Configuration validation failed."""
+    """Indicate configuration validation failed with details in `context`."""
     pass
 
 
 class ConfigMergeError(ConfigError):
-    """Configuration merging failed."""
+    """Indicate an error occurred while merging layered configurations."""
     pass
 
 
 # Project Errors
 class ProjectError(AgenticWorkflowError):
-    """Project-related errors."""
+    """Represent project-related errors such as missing or invalid projects."""
     pass
 
 
 class ProjectNotFoundError(ProjectError):
-    """Project not found."""
-    pass
+    """Indicate the requested project could not be located on disk."""
+    exit_code = 13
 
 
 class ProjectAlreadyExistsError(ProjectError):
-    """Project already exists."""
+    """Indicate a project creation failed because the target already exists."""
     pass
 
 
 class ProjectValidationError(ProjectError):
-    """Project validation failed."""
+    """Indicate that project metadata or structure failed validation checks."""
     pass
 
 
 # Workflow Errors
 class WorkflowError(AgenticWorkflowError):
-    """Workflow-related errors."""
+    """Represent workflow-related errors such as parse or missing workflow files."""
     pass
 
 
 class WorkflowNotFoundError(WorkflowError):
-    """Workflow not found."""
-    pass
+    """Indicate the requested workflow package could not be found."""
+    exit_code = 11
 
 
 class WorkflowValidationError(WorkflowError):
-    """Workflow validation failed."""
+    """Indicate the workflow manifest failed validation rules."""
     pass
 
 
 class WorkflowExecutionError(WorkflowError):
-    """Workflow execution failed."""
+    """Indicate an error occurred while executing a workflow pipeline."""
     pass
 
 
 # Agent Errors
 class AgentError(AgenticWorkflowError):
-    """Agent-related errors."""
+    """Represent agent-specific errors such as missing agent definitions."""
     pass
 
 
 class AgentNotFoundError(AgentError):
-    """Agent not found."""
-    pass
+    """Indicate that an agent identifier could not be resolved to a definition."""
+    exit_code = 12
 
 
 class AgentValidationError(AgentError):
-    """Agent validation failed."""
+    """Indicate that an agent definition failed validation checks."""
     pass
 
 
 # CLI Errors
 class CLIError(AgenticWorkflowError):
-    """CLI-related errors."""
+    """Represent CLI-related errors such as invalid input or command failures."""
     pass
 
 
 class CLIValidationError(CLIError):
-    """CLI validation failed."""
+    """Indicate CLI input validation failed for the invoked command."""
     pass
 
 
 class CLIExecutionError(CLIError):
-    """CLI execution failed."""
+    """Indicate an error occurred while executing a CLI command."""
     pass
 
 
 # Validation Errors
 class ValidationError(AgenticWorkflowError):
-    """Validation-related errors."""
+    """Represent general validation errors across the platform."""
     pass
 
 
 class SchemaValidationError(ValidationError):
-    """Schema validation failed."""
+    """Indicate a Pydantic or schema validation failure with details in context."""
     pass
 
 
 # File System Errors
 class FileSystemError(AgenticWorkflowError):
-    """File system related errors."""
+    """Represent file system related errors such as missing files or permissions."""
     pass
 
 
 class FileNotFoundError(FileSystemError):
-    """File not found."""
+    """Indicate a required filesystem path was not found."""
     pass
 
 
 class FilePermissionError(FileSystemError):
-    """File permission error."""
+    """Indicate a permission error when accessing a filesystem resource."""
     pass
 
 
 class DirectoryError(FileSystemError):
-    """Directory operation error."""
+    """Indicate errors performing directory operations (create/remove)."""
     pass
 
 
 # Ledger Errors
 class LedgerError(AgenticWorkflowError):
-    """Ledger-related errors."""
+    """Represent ledger subsystem errors related to persistent state."""
     pass
 
 
 class LedgerValidationError(LedgerError):
-    """Ledger validation failed."""
+    """Indicate ledger integrity or validation issues."""
     pass
 
 
 class LedgerCorruptionError(LedgerError):
-    """Ledger corruption detected."""
+    """Indicate detected ledger corruption requiring administrative action."""
     pass
 
 
 # Generation Errors
 class GenerationError(AgenticWorkflowError):
-    """Generation-related errors."""
+    """Represent errors encountered during project or artifact generation."""
     pass
 
 
 class TemplateError(GenerationError):
-    """Template processing error."""
+    """Indicate template processing or rendering errors."""
     pass
 
 
 class TemplateNotFoundError(TemplateError):
-    """Template not found."""
+    """Indicate a requested template file could not be located."""
     pass
 
 
 # Service Errors
 class ServiceError(AgenticWorkflowError):
-    """Service layer errors."""
+    """Represent transient or permanent service-layer failures."""
     pass
 
 
 class ServiceUnavailableError(ServiceError):
-    """Service unavailable."""
+    """Indicate the downstream service is currently unavailable."""
     pass
 
 
 class ServiceTimeoutError(ServiceError):
-    """Service timeout."""
+    """Indicate a timeout occurred while calling a downstream service."""
     pass
 
 
 class HandlerError(AgenticWorkflowError):
-    """CLI handler error."""
+    """Represent errors occurring inside CLI handlers or command wiring."""
     pass
 
 
 class SessionError(AgenticWorkflowError):
-    """Session management error."""
+    """Indicate errors managing agent sessions or session state."""
     pass
 
 
 class ArtifactError(AgenticWorkflowError):
-    """Artifact processing error."""
+    """Represent errors during artifact creation, lookup, or validation."""
     pass
 
 
 class GovernanceError(AgenticWorkflowError):
-    """Base exception for governance-related errors."""
+    """Base exception for governance policy or validation errors."""
     pass
 
 
 class ValidationViolation(GovernanceError):
-    """Raised when a specific governance validation rule is violated."""
+    """Indicate a specific governance rule has been violated."""
     pass
 
 
 class PolicyConfigurationError(GovernanceError):
-    """Raised when governance policy definition is invalid or malformed."""
+    """Indicate governance policy definitions are invalid or malformed."""
     pass
+
+
+class ManifestError(AgenticWorkflowError):
+    """Represent errors parsing or validating workflow manifests."""
+    exit_code = 14
+
+
+# Backwards-compatible alias for older code using `AgenticError`
+AgenticError = AgenticWorkflowError
 
 
 def handle_error(
     error: Exception,
     operation: str,
-    context: Optional[Dict[str, Any]] = None,
+    context: Optional[ErrorContext] = None,
     log_level: str = "error",
-    reraise: bool = True
+    reraise: bool = True,
 ) -> None:
-    """
-    Centralized error handling function.
+    """Log an exception with structured context and optionally re-raise it.
 
-    Args:
-        error: The exception that occurred
-        operation: Description of the operation being performed
-        context: Additional context information
-        log_level: Logging level ("debug", "info", "warning", "error", "critical")
-        reraise: Whether to re-raise the exception after logging
+    Normalizes context into a flat stringified mapping and emits a single
+    structured log record. This function intentionally returns `None` and
+    does not modify program control flow unless `reraise` is True.
     """
-    full_context = {
-        "operation": operation,
-        "error_type": type(error).__name__,
-        **(context or {})
-    }
+    # Normalize context into stringified flat mapping to simplify logging.
+    full_context: ErrorContext = {"operation": operation, "error_type": type(error).__name__}
+    if context:
+        for k, v in context.items():
+            try:
+                full_context[k] = str(v)
+            except Exception:
+                full_context[k] = "<unstringifiable>"
 
     if isinstance(error, AgenticWorkflowError):
-        # Already structured error
         log_data = error.to_dict()
-        log_data.update(full_context)
+        # Merge context fields
+        log_data.update({k: str(v) for k, v in full_context.items()})
     else:
-        # Wrap generic exceptions
         log_data = {
-            "operation": operation,
-            "error_type": type(error).__name__,
+            "operation": full_context.get("operation", ""),
+            "error_type": full_context.get("error_type", ""),
             "error_message": str(error),
-            "context": full_context
         }
+        log_data.update({k: str(v) for k, v in full_context.items()})
 
-    # Log the error
+    # Log the error using stable, flat data suitable for structured loggers
     log_func = getattr(logger, log_level.lower(), logger.error)
     log_func(f"Error in {operation}: {error}", extra=log_data)
 
@@ -383,125 +424,95 @@ def handle_error(
 
 
 def validate_required(
-    value: Any,
+    value: object,
     name: str,
     operation: str,
-    context: Optional[Dict[str, Any]] = None
+    context: Optional[ErrorContext] = None,
 ) -> None:
-    """
-    Validate that a required value is not None/empty.
+    """Ensure a required value is present and not an empty string/collection.
 
-    Args:
-        value: Value to check
-        name: Name of the value for error messages
-        operation: Current operation context
-        context: Additional context
-
-    Raises:
-        ValidationError: If value is None or empty
+    Raises a `ValidationError` with stringified `ErrorContext` when the
+    precondition is not met.
     """
+    ctx: ErrorContext = {"operation": operation, "value_name": name}
+    if context:
+        for k, v in context.items():
+            ctx[k] = str(v)
+
     if value is None:
         raise ValidationError(
             f"Required value '{name}' is None",
             error_code="REQUIRED_VALUE_MISSING",
-            context={"operation": operation, "value_name": name, **(context or {})}
+            context=ctx,
         )
 
     if isinstance(value, str) and not value.strip():
         raise ValidationError(
             f"Required value '{name}' is empty",
             error_code="REQUIRED_VALUE_EMPTY",
-            context={"operation": operation, "value_name": name, **(context or {})}
+            context=ctx,
         )
 
-    if isinstance(value, (list, dict)) and len(value) == 0:
+    if isinstance(value, (list, tuple, set)) and len(value) == 0:
         raise ValidationError(
             f"Required value '{name}' is empty",
             error_code="REQUIRED_VALUE_EMPTY",
-            context={"operation": operation, "value_name": name, **(context or {})}
+            context=ctx,
         )
 
 
-def validate_path_exists(
-    path: Path,
-    operation: str,
-    context: Optional[Dict[str, Any]] = None
-) -> None:
-    """
-    Validate that a path exists.
+def validate_path_exists(path: Path, operation: str) -> None:
+    """Check that `path` exists and raise `FileNotFoundError` when missing.
 
-    Args:
-        path: Path to check
-        operation: Current operation context
-        context: Additional context
-
-    Raises:
-        FileNotFoundError: If path doesn't exist
+    The raised exception contains a minimal `ErrorContext` that maps to
+    `operation` and `path`, suitable for static analysis.
     """
     if not path.exists():
         raise FileNotFoundError(
             f"Path does not exist: {path}",
             error_code="PATH_NOT_FOUND",
-            context={"operation": operation, "path": str(path), **(context or {})}
+            context={"operation": operation, "path": str(path)},
         )
 
 
-def validate_file_readable(
-    path: Path,
-    operation: str,
-    context: Optional[Dict[str, Any]] = None
-) -> None:
-    """
-    Validate that a file is readable.
+def validate_file_readable(path: Path, operation: str) -> None:
+    """Verify that `path` exists, is a file, and is readable.
 
-    Args:
-        path: File path to check
-        operation: Current operation context
-        context: Additional context
-
-    Raises:
-        FilePermissionError: If file is not readable
+    Raises `FileSystemError` or `FilePermissionError` with a minimal
+    `ErrorContext` when checks fail.
     """
-    validate_path_exists(path, operation, context)
+    validate_path_exists(path, operation)
 
     if not path.is_file():
         raise FileSystemError(
             f"Path is not a file: {path}",
             error_code="NOT_A_FILE",
-            context={"operation": operation, "path": str(path), **(context or {})}
+            context={"operation": operation, "path": str(path)},
         )
 
     try:
-        with open(path, 'r', encoding='utf-8') as f:
-            f.read(1)  # Try to read one character
+        with open(path, "r", encoding="utf-8") as f:
+            f.read(1)  # Try to read one character to verify readability
     except (PermissionError, OSError) as e:
         raise FilePermissionError(
             f"File is not readable: {path}",
             error_code="FILE_NOT_READABLE",
-            context={"operation": operation, "path": str(path), **(context or {})},
-            cause=e
+            context={"operation": operation, "path": str(path)},
+            cause=e,
         )
 
 
 def safe_operation(
-    operation_func: Callable,
+    operation_func: Callable[[], T],
     operation_name: str,
-    context: Optional[Dict[str, Any]] = None,
-    fallback_value: Any = None,
-    log_level: str = "error"
-) -> Any:
-    """
-    Execute an operation safely with error handling.
+    context: Optional[ErrorContext] = None,
+    fallback_value: Optional[T] = None,
+    log_level: str = "error",
+) -> Optional[T]:
+    """Run `operation_func` and return a typed fallback on error.
 
-    Args:
-        operation_func: Function to execute
-        operation_name: Name of the operation for logging
-        context: Additional context
-        fallback_value: Value to return on error
-        log_level: Logging level for errors
-
-    Returns:
-        Result of operation_func or fallback_value on error
+    This utility captures exceptions, emits a structured log via
+    `handle_error`, and returns `fallback_value` instead of raising.
     """
     try:
         return operation_func()
@@ -511,6 +522,6 @@ def safe_operation(
             operation_name,
             context=context,
             log_level=log_level,
-            reraise=False
+            reraise=False,
         )
         return fallback_value

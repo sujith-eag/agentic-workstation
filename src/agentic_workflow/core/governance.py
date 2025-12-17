@@ -8,15 +8,12 @@ It includes:
 - Rule-based validation with configurable strictness levels.
 - Support for different governance contexts (init, handoff, decision, end).
 - detailed error reporting with actionable feedback.
-
-Author: AI Assistant
-Date: December 6, 2025
 """
 
 import logging
 import json
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Callable, Union
+from typing import Dict, Any, Optional, List, Callable, Union, TypedDict
 from dataclasses import dataclass, field
 
 from agentic_workflow.core.exceptions import (
@@ -44,17 +41,86 @@ GOVERNANCE_CONTEXT_END = "end"
 GOVERNANCE_CONTEXT_ACTIVATION = "activation"
 
 
+# Public interface for this module
+__all__ = [
+    "GovernanceRule",
+    "GovernanceResult",
+    "GovernanceEngine",
+    "get_governance_engine",
+    "validate_governance",
+    "enforce_governance",
+]
+
+
+# TypedDicts to expose expected config/data shapes for static analysis
+class GovernanceConfig(TypedDict, total=False):
+    strictness: Dict[str, str]
+    rules: Dict[str, object]
+
+
+class ProjectMetadata(TypedDict, total=False):
+    name: str
+    description: str
+    created: Optional[str]
+
+
+class AgentMetadata(TypedDict, total=False):
+    role: Optional[str]
+    capabilities: Optional[List[str]]
+
+
+class RuntimeConfig(TypedDict, total=False):
+    governance: GovernanceConfig
+
+
+class ProjectData(TypedDict, total=False):
+    path: str
+    metadata: ProjectMetadata
+
+
+class AgentData(TypedDict, total=False):
+    id: str
+    stage: str
+    consumes_core: List[str]
+    metadata: AgentMetadata
+
+
+class Violation(TypedDict, total=False):
+    rule: str
+    description: str
+    error_message: str
+    fix_suggestion: Optional[str]
+    level: str
+
+
+class Warning(TypedDict, total=False):
+    message: str
+    rule: Optional[str]
+    level: Optional[str]
+    detail: Optional[str]
+
+
+class GovernanceData(TypedDict, total=False):
+    project_path: str
+    project: ProjectData
+    agent: AgentData
+    artifacts: List[str]
+    rationale: str
+    from_agent: str
+    to_agent: str
+    stage: Dict[str, object]
+
+
 @dataclass
 class GovernanceRule:
-    """
-    Represents a single governance rule.
+    """Encapsulates a governance rule used to validate workflow data.
 
     Attributes:
         name: Unique identifier for the rule.
         description: Human-readable description of what the rule enforces.
         context: The context in which this rule applies (e.g., 'init', 'handoff').
         level: Strictness level required to trigger this rule ('strict', 'moderate', 'lenient').
-        condition: Callable that takes a data dictionary and returns True if compliant.
+        condition: Callable that evaluates `GovernanceData` and returns True when compliant.
         error_message: Message to display when the rule is violated.
         fix_suggestion: Optional suggestion for resolving the violation.
         enabled: Whether the rule is currently active.
@@ -63,7 +129,7 @@ class GovernanceRule:
     description: str
     context: str
     level: str
-    condition: Callable[[Dict[str, Any]], bool]
+    condition: Callable[["GovernanceData"], bool]
     error_message: str
     fix_suggestion: Optional[str] = None
     enabled: bool = True
@@ -71,18 +137,17 @@ class GovernanceRule:
 
 @dataclass
 class GovernanceResult:
-    """
-    Result of governance validation.
+    """Represents the outcome of governance validation for a given context.
 
     Attributes:
         passed: True if all applicable rules passed.
-        violations: List of violation details (dictionaries).
+        violations: List of violation details.
         warnings: List of warning details.
         context: The context that was validated.
     """
     passed: bool
-    violations: List[Dict[str, Any]] = field(default_factory=list)
-    warnings: List[Dict[str, Any]] = field(default_factory=list)
+    violations: List[Violation] = field(default_factory=list)
+    warnings: List["Warning"] = field(default_factory=list)
     context: str = ""
 
     def __bool__(self) -> bool:
@@ -90,21 +155,20 @@ class GovernanceResult:
 
 
 class GovernanceEngine:
-    """
-    Engine for evaluating governance rules against workflow data.
+    """Evaluates governance rules against workflow data for specified contexts.
 
-    This engine manages a registry of rules and evaluates them based on the
-    requested context and strictness level.
+    The engine manages a registry of `GovernanceRule` instances and applies
+    them according to configured strictness and context.
     """
 
-    def __init__(self, config: Dict[str, Any]):
-        """
-        Initialize the GovernanceEngine.
+    def __init__(self, config: "RuntimeConfig"):
+        """Initialize the GovernanceEngine with a runtime configuration.
 
         Args:
-            config: Configuration dictionary containing 'governance' settings.
+            config: Runtime configuration with governance settings.
         """
-        self.config = config
+        # keep the raw config available for backwards compatibility
+        self.config: RuntimeConfig = config
         self.rules: Dict[str, GovernanceRule] = {}
         self._load_rules()
 
@@ -166,7 +230,7 @@ class GovernanceEngine:
             if rule_name not in self.rules:
                 self.register_rule(rule)
 
-    def _create_dynamic_condition(self, rule_config: Dict) -> Callable:
+    def _create_dynamic_condition(self, rule_config: Dict[str, object]) -> Callable[["GovernanceData"], bool]:
         """
         Create a dynamic condition function from declarative rule configuration.
 
@@ -181,7 +245,7 @@ class GovernanceEngine:
         Returns:
             Callable that takes data dict and returns bool
         """
-        def dynamic_condition(data: Dict[str, Any]) -> bool:
+        def dynamic_condition(data: "GovernanceData") -> bool:
             # Check required files
             required_files = rule_config.get('required_files', [])
             if required_files:
@@ -302,21 +366,20 @@ class GovernanceEngine:
         }
 
     def validate(
-        self, 
-        context: str, 
-        data: Dict[str, Any], 
-        strictness: Optional[str] = None
+        self,
+        context: str,
+        data: "GovernanceData",
+        strictness: Optional[str] = None,
     ) -> GovernanceResult:
-        """
-        Validate data against rules for a specific context.
+        """Validate provided governance data against registered rules for a context.
 
         Args:
             context: The context to validate (e.g., 'init', 'handoff').
-            data: The data dictionary to check against rule conditions.
-            strictness: Optional override for strictness level. Defaults to config settings.
+            data: The governance data to evaluate.
+            strictness: Optional override for strictness level. Defaults to configured level.
 
         Returns:
-            GovernanceResult object containing pass status and violations.
+            GovernanceResult containing pass/fail and any violations.
         """
         if strictness is None:
             strictness = self.config.get('governance', {}).get('strictness', {}).get('level', GOVERNANCE_LEVEL_MODERATE)
@@ -373,17 +436,16 @@ class GovernanceEngine:
         return result
 
     def enforce(
-        self, 
-        context: str, 
-        data: Dict[str, Any], 
-        strictness: Optional[str] = None
+        self,
+        context: str,
+        data: "GovernanceData",
+        strictness: Optional[str] = None,
     ) -> None:
-        """
-        Enforce governance rules, raising an exception on violations.
+        """Enforce governance rules for the given context and raise on violations.
 
         Args:
             context: The context to enforce.
-            data: The data to validate.
+            data: The governance data to validate.
             strictness: Optional strictness level override.
 
         Raises:
@@ -420,8 +482,9 @@ class GovernanceEngine:
     # Built-in Condition Logic
     # ---------------------------
 
-    def _check_project_structure(self, data: Dict[str, Any]) -> bool:
-        """Condition: Check if project structure is valid."""
+    def _check_project_structure(self, data: "GovernanceData") -> bool:
+        """Check whether the project directory structure is valid for the project.
+        """
         try:
             project_path = data.get('project_path')
             if not project_path:
@@ -433,8 +496,9 @@ class GovernanceEngine:
         except Exception:
             return False
 
-    def _check_workflow_files(self, data: Dict[str, Any]) -> bool:
-        """Condition: Check if required workflow files exist."""
+    def _check_workflow_files(self, data: "GovernanceData") -> bool:
+        """Verify required workflow files exist under the given project path.
+        """
         try:
             project_path = data.get('project_path')
             if not project_path:
@@ -452,8 +516,9 @@ class GovernanceEngine:
         except Exception:
             return False
 
-    def _check_agent_handoff(self, data: Dict[str, Any]) -> bool:
-        """Condition: Check if agent handoff matches rules (different agents, valid artifacts)."""
+    def _check_agent_handoff(self, data: "GovernanceData") -> bool:
+        """Validate that a handoff between agents is well-formed and references existing artifacts.
+        """
         from_agent = data.get('from_agent')
         to_agent = data.get('to_agent')
         artifacts = data.get('artifacts', [])
@@ -481,13 +546,15 @@ class GovernanceEngine:
 
         return True
 
-    def _check_decision_rationale(self, data: Dict[str, Any]) -> bool:
-        """Condition: Check if decision includes a non-empty rationale."""
+    def _check_decision_rationale(self, data: "GovernanceData") -> bool:
+        """Ensure a decision includes a non-empty rationale string.
+        """
         rationale = data.get('rationale', '').strip()
         return len(rationale) > 0
 
-    def _check_artifacts_complete(self, data: Dict[str, Any]) -> bool:
-        """Condition: Check if all 'required' artifacts are present."""
+    def _check_artifacts_complete(self, data: "GovernanceData") -> bool:
+        """Check that all artifacts marked as required are present in the artifacts directory.
+        """
         try:
             project_path = data.get('project_path')
             if not project_path:
@@ -520,8 +587,9 @@ class GovernanceEngine:
         except Exception:
             return True
 
-    def _check_agent_stage(self, data: Dict[str, Any]) -> bool:
-        """Check if agent can be activated in current stage."""
+    def _check_agent_stage(self, data: "GovernanceData") -> bool:
+        """Determine whether the agent is allowed to activate in the current project stage.
+        """
         try:
             agent_stage = data.get('agent', {}).get('stage', '')
             current_stage = data.get('stage', {}).get('current', '')
@@ -535,8 +603,9 @@ class GovernanceEngine:
         except Exception:
             return True
 
-    def _check_agent_artifacts(self, data: Dict[str, Any]) -> bool:
-        """Check if required artifacts exist for agent."""
+    def _check_agent_artifacts(self, data: "GovernanceData") -> bool:
+        """Verify that artifacts consumed by the agent are present or declared.
+        """
         try:
             consumes_core = data.get('agent', {}).get('consumes_core', [])
             if not consumes_core:
@@ -548,8 +617,9 @@ class GovernanceEngine:
         except Exception:
             return True
 
-    def _check_agent_not_blocked(self, data: Dict[str, Any]) -> bool:
-        """Check if agent is not blocked."""
+    def _check_agent_not_blocked(self, data: "GovernanceData") -> bool:
+        """Ensure the agent is not currently blocked by governance rules or blockers.
+        """
         try:
             # For now, assume no blockers
             # Could be enhanced to check blocker logs
@@ -562,7 +632,7 @@ class GovernanceEngine:
 # Module Interface Functions
 # -----------------------------------------------------------------------------
 
-def get_governance_engine(config: Optional[Dict[str, Any]] = None) -> GovernanceEngine:
+def get_governance_engine(config: Optional["RuntimeConfig"] = None) -> GovernanceEngine:
     """
     Factory function to get a GovernanceEngine instance.
 
@@ -574,15 +644,16 @@ def get_governance_engine(config: Optional[Dict[str, Any]] = None) -> Governance
     """
     if config is None:
         config_service = ConfigurationService()
-        config = config_service.load_config()
+        cfg = config_service.load_config()
+        config = cfg  # type: ignore[assignment]
     return GovernanceEngine(config)
 
 
 def validate_governance(
-    context: str, 
-    data: Dict[str, Any], 
-    config: Optional[Dict[str, Any]] = None, 
-    strictness: Optional[str] = None
+    context: str,
+    data: "GovernanceData",
+    config: Optional["RuntimeConfig"] = None,
+    strictness: Optional[str] = None,
 ) -> GovernanceResult:
     """
     Convenience wrapper to validate governance rules.
@@ -601,10 +672,10 @@ def validate_governance(
 
 
 def enforce_governance(
-    context: str, 
-    data: Dict[str, Any], 
-    config: Optional[Dict[str, Any]] = None, 
-    strictness: Optional[str] = None
+    context: str,
+    data: "GovernanceData",
+    config: Optional["RuntimeConfig"] = None,
+    strictness: Optional[str] = None,
 ) -> None:
     """
     Convenience wrapper to enforce governance rules.

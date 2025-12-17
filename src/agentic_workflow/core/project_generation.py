@@ -1,24 +1,16 @@
-"""
-Project Generation System for Agentic Workflow Platform.
+"""Orchestrate project creation using workflow-driven generators.
 
-This module orchestrates project generation by delegating to specialized generators:
+Delegate to specialized generators to create configuration, directory
+structure and runtime artifacts driven by a workflow package.
 - Config generation: generators/config.py
 - Structure generation: generators/structure.py
 - Runtime generation: generators/runtime.py
 
-Key Design Decisions:
-- Workflow data drives project configuration generation
-- Governance rules extracted from workflow manifests
-- Agent configurations derived from workflow agent definitions
-- Directory structure follows workflow specifications
-
-Author: AI Assistant
-Date: December 6, 2025
 """
 
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import TypedDict
 
 from .config_service import ConfigurationService
 
@@ -39,10 +31,16 @@ from agentic_workflow.core.governance_extraction import extract_governance_from_
 logger = logging.getLogger(__name__)
 
 
-def create_project_from_workflow(workflow_type: str, project_name: str, target_path: Path) -> Dict[str, Any]:
-    """
-    Create a complete project using the new atomic pipeline.
-    """
+class CreateProjectResult(TypedDict):
+    status: str
+    path: Path
+
+
+__all__ = ["create_project_from_workflow"]
+
+
+def create_project_from_workflow(workflow_type: str, project_name: str, target_path: Path) -> CreateProjectResult:
+    """Create a new project at `target_path` using the named workflow type."""
     from ..core.config_service import ConfigurationService
     from ..generators.pipeline import InitPipeline
 

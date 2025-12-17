@@ -1,24 +1,14 @@
-"""
-Path Resolution System for Agentic Workflow Platform
+"""Resolve path strings into concrete filesystem Paths for runtime configs.
 
-This module provides dynamic path resolution for CLI-script interactions,
-supporting both absolute and relative paths with configuration-driven resolution.
-
-Key Design Decisions:
-- Support for both absolute and relative paths in config
-- Auto-resolution of paths relative to project root, repo root, or current directory
-- Path type detection and validation
-- Environment variable expansion in paths
-- Cross-platform path handling with Pathlib
-- Caching of resolved paths for performance
-
-Author: AI Assistant
-Date: December 6, 2025
+This module implements configuration-driven path resolution used by the
+CLI and services: it expands environment variables, detects special
+prefixes (``${REPO_ROOT}``, ``${PROJECT_ROOT}``), and returns a
+structured ``ResolvedPath`` describing resolution metadata.
 """
 
 import os
 from pathlib import Path
-from typing import Dict, Any, Optional, Union, List
+from typing import Dict, Any, Optional, Union, List, TypedDict
 from dataclasses import dataclass
 import logging
 
@@ -33,9 +23,31 @@ PATH_TYPE_RELATIVE_PROJECT = "relative_project"
 PATH_TYPE_RELATIVE_REPO = "relative_repo"
 PATH_TYPE_RELATIVE_CURRENT = "relative_current"
 
+
+# Public API exported from this module
+__all__ = [
+    "ResolvedPath",
+    "resolve_path",
+    "resolve_config_paths",
+    "get_project_dirs",
+    "get_workflow_paths",
+    "ensure_project_dirs_exist",
+    "validate_project_structure",
+    "get_script_paths",
+    "get_agent_file_path",
+    "get_artifact_path",
+    "get_log_path",
+    "get_context_path",
+]
+
 @dataclass
 class ResolvedPath:
-    """Represents a resolved path with metadata"""
+    """Represent a resolved `Path` with metadata for config-driven resolution.
+
+    The dataclass exposes the resolved absolute `path`, the original input
+    string, the `path_type` detected, the `base_path` used for resolution,
+    and boolean flags describing existence and file/directory status.
+    """
     path: Path
     original_path: str
     path_type: str
@@ -45,22 +57,23 @@ class ResolvedPath:
     is_dir: bool
 
     def __str__(self) -> str:
+        """Return the string form of the resolved Path for logging or display."""
         return str(self.path)
 
     def __fspath__(self) -> str:
+        """Return the filesystem path string for consumption by I/O APIs."""
         return str(self.path)
 
 class PathResolutionError(Exception):
-    """Raised when path resolution fails"""
+    """Raised when path resolution fails during config or path handling."""
     pass
 
 def _expand_env_vars_in_path(path_str: str) -> str:
-    """Expand environment variables in path string"""
+    """Expand environment variables in a path string to their values."""
     return os.path.expandvars(path_str)
 
 def _detect_path_type(path_str: str) -> str:
-    """
-    Detect the type of path based on its format
+    """Detect whether a path string is absolute or repo/project/current relative.
 
     Design Decision: Use prefixes to indicate path type:
     - Absolute paths start with / or drive letter (Windows)
@@ -84,7 +97,7 @@ def _detect_path_type(path_str: str) -> str:
     return PATH_TYPE_RELATIVE_CURRENT
 
 def _get_base_path(path_type: str, project_path: Optional[Path] = None, repo_path: Optional[Path] = None) -> Path:
-    """Get the base path for a given path type"""
+    """Return the base `Path` used to resolve a path of the given type."""
     if path_type == PATH_TYPE_ABSOLUTE:
         return Path("/")
     elif path_type == PATH_TYPE_RELATIVE_REPO:
@@ -97,10 +110,9 @@ def _get_base_path(path_type: str, project_path: Optional[Path] = None, repo_pat
         raise PathResolutionError(f"Unknown path type: {path_type}")
 
 def resolve_path(path_str: str, project_path: Optional[Path] = None, repo_path: Optional[Path] = None) -> ResolvedPath:
-    """
-    Resolve a path string to an absolute Path object
+    """Resolve a path string into a `ResolvedPath` using project/repo context.
 
-    Design Decision: Support multiple path types with intelligent resolution
+    Supports absolute paths and special prefixes `${REPO_ROOT}` and `${PROJECT_ROOT}`.
     """
     if not path_str or not path_str.strip():
         raise PathResolutionError("Empty path string provided")
@@ -149,11 +161,24 @@ def resolve_path(path_str: str, project_path: Optional[Path] = None, repo_path: 
         is_dir=is_dir
     )
 
-def resolve_config_paths(config: Dict[str, Any], project_path: Optional[Path] = None, repo_path: Optional[Path] = None) -> Dict[str, ResolvedPath]:
-    """
-    Resolve all path-related configuration values
+class ConfigMapping(TypedDict, total=False):
+    """Typed mapping describing path-related configuration sections.
 
-    Design Decision: Recursively traverse config and resolve any string values that look like paths
+    - `directories`: mapping of logical directory names to relative/absolute paths
+    - `workflow`: mapping of workflow-related filenames to paths
+    - `scripts`: mapping of named script entries to path strings
+    """
+    directories: Dict[str, str]
+    workflow: Dict[str, str]
+    scripts: Dict[str, str]
+
+
+def resolve_config_paths(config: ConfigMapping, project_path: Optional[Path] = None, repo_path: Optional[Path] = None) -> Dict[str, ResolvedPath]:
+    """Recursively resolve path-like strings in `config` and return ResolvedPath map.
+
+    Walks the provided configuration mapping and resolves any string that looks
+    like a filesystem path into a `ResolvedPath`. The returned mapping keys
+    are dotted keys describing the original location (e.g. ``config.directories.agent_files``).
     """
     resolved_paths = {}
 
@@ -179,11 +204,11 @@ def resolve_config_paths(config: Dict[str, Any], project_path: Optional[Path] = 
 
     return resolved_paths
 
-def get_project_dirs(config: Dict[str, Any], project_path: Path) -> Dict[str, Path]:
-    """
-    Get standard project directory paths from configuration
+def get_project_dirs(config: ConfigMapping, project_path: Path) -> Dict[str, Path]:
+    """Return a mapping of canonical project directory names to absolute Paths.
 
-    Design Decision: Use config to define standard directory structure
+    Uses `config['directories']` when present and falls back to sensible
+    defaults under the provided `project_path`.
     """
     dirs_config = config.get('directories', {})
 
@@ -213,11 +238,11 @@ def get_project_dirs(config: Dict[str, Any], project_path: Path) -> Dict[str, Pa
 
     return project_dirs
 
-def get_workflow_paths(config: Dict[str, Any], project_path: Path) -> Dict[str, Path]:
-    """
-    Get workflow-related file paths
+def get_workflow_paths(config: ConfigMapping, project_path: Path) -> Dict[str, Path]:
+    """Return canonical workflow-related file Paths resolved relative to `project_path`.
 
-    Design Decision: Support configurable workflow file locations
+    Ensures workflow file names are treated as project-relative when not
+    explicitly absolute or prefixed with `${REPO_ROOT}`/`${PROJECT_ROOT}`.
     """
     workflow_config = config.get('workflow', {})
 
@@ -247,11 +272,7 @@ def get_workflow_paths(config: Dict[str, Any], project_path: Path) -> Dict[str, 
     return workflow_paths
 
 def ensure_project_dirs_exist(project_dirs: Dict[str, Path]) -> None:
-    """
-    Ensure all project directories exist
-
-    Design Decision: Create directories as needed, log warnings for failures
-    """
+    """Create any missing project directories from the provided mapping."""
     for dir_name, dir_path in project_dirs.items():
         try:
             dir_path.mkdir(parents=True, exist_ok=True)
@@ -259,13 +280,9 @@ def ensure_project_dirs_exist(project_dirs: Dict[str, Path]) -> None:
         except Exception as e:
             logger.error(f"Failed to create directory {dir_name}: {dir_path} - {e}")
 
-def validate_project_structure(project_path: Path, config: Dict[str, Any]) -> List[str]:
-    """
-    Validate that the project structure matches the configuration
-
-    Design Decision: Check for required directories and files, return list of issues
-    """
-    issues = []
+def validate_project_structure(project_path: Path, config: ConfigMapping) -> List[str]:
+    """Validate project directories and required workflow files, returning a list of issues."""
+    issues: List[str] = []
 
     # Get expected directories
     project_dirs = get_project_dirs(config, project_path)
@@ -289,11 +306,11 @@ def validate_project_structure(project_path: Path, config: Dict[str, Any]) -> Li
 
     return issues
 
-def get_script_paths(config: Dict[str, Any], repo_path: Optional[Path] = None) -> Dict[str, Path]:
-    """
-    Get paths to CLI scripts and executables
+def get_script_paths(config: ConfigMapping, repo_path: Optional[Path] = None) -> Dict[str, Path]:
+    """Return resolved Paths for named CLI scripts declared in `config['scripts']`.
 
-    Design Decision: Support configurable script locations for CLI-script integration
+    If `repo_path` is omitted the repository root is located using the
+    configuration service helper.
     """
     scripts_config = config.get('scripts', {})
 
@@ -322,20 +339,20 @@ def get_script_paths(config: Dict[str, Any], repo_path: Optional[Path] = None) -
 
 # Utility functions for common path operations
 def get_agent_file_path(project_dirs: Dict[str, Path], agent_id: str, file_type: str = 'md') -> Path:
-    """Get path for an agent file"""
+    """Return the Path to an agent file inside the project's `agent_files` dir."""
     return project_dirs['agent_files'] / f"{agent_id}.{file_type}"
 
 def get_artifact_path(project_dirs: Dict[str, Path], artifact_name: str) -> Path:
-    """Get path for an artifact"""
+    """Return the Path to an artifact inside the project's `artifacts` dir."""
     return project_dirs['artifacts'] / artifact_name
 
 def get_log_path(project_dirs: Dict[str, Path], log_type: str, timestamp: Optional[str] = None) -> Path:
-    """Get path for a log file"""
+    """Return the Path to a log file inside the project's `agent_log` directory."""
     if timestamp:
         return project_dirs['agent_log'] / f"{log_type}_{timestamp}.log"
     else:
         return project_dirs['agent_log'] / f"{log_type}.log"
 
 def get_context_path(project_dirs: Dict[str, Path], context_type: str) -> Path:
-    """Get path for context files"""
+    """Return the Path for a context JSON file inside `agent_context`."""
     return project_dirs['agent_context'] / f"{context_type}.json"

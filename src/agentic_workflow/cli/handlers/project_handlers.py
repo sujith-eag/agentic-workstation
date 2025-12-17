@@ -10,7 +10,7 @@ from ...core.exceptions import (
     ProjectError, ProjectNotFoundError, 
     handle_error, validate_required
 )
-from ...services import ProjectService
+from agentic_workflow.services import ProjectService
 from ..utils import display_action_result, display_info, display_warning, shorten_path
 
 logger = logging.getLogger(__name__)

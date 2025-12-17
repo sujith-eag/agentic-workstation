@@ -1,16 +1,10 @@
-"""Project metadata operations.
+"""Manage project metadata: load, save and query project-level metadata.
 
-This module provides functions for loading and saving project metadata.
-Eliminates duplicate implementations across session modules.
-
-Usage:
-    from core.project import load_project_meta, get_project_workflow_name
-    
-    meta = load_project_meta('myproject')
-    workflow = get_project_workflow_name('myproject')
+Provides canonical helpers for reading and updating project metadata used by
+session and workflow code paths.
 """
 from pathlib import Path
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, TypedDict
 import json
 import re
 
@@ -32,6 +26,15 @@ __all__ = [
     "is_in_project",
     "validate_project_name",
 ]
+
+
+class ProjectMeta(TypedDict, total=False):
+    """TypedDict describing the shape of a project's metadata mapping."""
+    workflow: Optional[str]
+    workflow_type: Optional[str]
+    current_stage: Optional[str]
+    # free-form metadata bag for compatibility with legacy configs
+    metadata: Dict[str, object]
 
 
 def get_project_dir(project_name: str) -> Path:
@@ -59,44 +62,28 @@ def project_exists(project_name: str) -> bool:
     return project_dir.exists() and (project_dir / ".agentic" / PROJECT_CONFIG_FILE).exists()
 
 
-def load_project_meta(project_name: str) -> Optional[Dict[str, Any]]:
-    """Load project's workflow metadata from project_config.json.
-    
-    This is the canonical function for loading project metadata.
-    Replaces duplicate implementations in:
-    - session/gate_checker.py
-    - session/stage_manager.py
-    - session/sync_planning.py
-    - session/activate_agent.py
-    - session/refresh_project.py
-    
+def load_project_meta(project_name: str) -> Optional[ProjectMeta]:
+    """Read the project's metadata mapping from the project's config file.
+
     Args:
         project_name: Name of the project.
-        
+
     Returns:
-        Dict containing project metadata, or None if not found.
+        A `ProjectMeta` mapping when present, otherwise `None`.
     """
     project_dir = get_project_dir(project_name)
     config_file = project_dir / ".agentic" / PROJECT_CONFIG_FILE
-    
+
     if not config_file.exists():
         return None
-    
+
     import yaml
     with open(config_file, 'r') as f:
         return yaml.safe_load(f)
 
 
-def save_project_meta(project_name: str, data: Dict[str, Any]) -> None:
-    """Save project's workflow metadata to project_config.json.
-    
-    Args:
-        project_name: Name of the project.
-        data: Metadata dict to save.
-        
-    Raises:
-        FileNotFoundError: If project directory doesn't exist.
-    """
+def save_project_meta(project_name: str, data: ProjectMeta) -> None:
+    """Write the provided project metadata mapping to the project's config file."""
     project_dir = get_project_dir(project_name)
     if not project_dir.exists():
         raise FileNotFoundError(f"Project directory not found: {project_dir}")
@@ -109,14 +96,7 @@ def save_project_meta(project_name: str, data: Dict[str, Any]) -> None:
 
 
 def get_project_workflow_name(project_name: str) -> Optional[str]:
-    """Get the workflow name for a project.
-    
-    Args:
-        project_name: Name of the project.
-        
-    Returns:
-        Workflow name (e.g., 'planning', 'implementation'), or None if not found.
-    """
+    """Return the configured workflow name for the given project, if any."""
     meta = load_project_meta(project_name)
     if meta is None:
         return None
@@ -145,23 +125,12 @@ def get_project_stage(project_name: str) -> Optional[str]:
     return meta.get('current_stage')
 
 
-def update_project_meta(project_name: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-    """Update specific fields in project metadata.
-    
-    Args:
-        project_name: Name of the project.
-        updates: Dict of fields to update.
-        
-    Returns:
-        Updated metadata dict.
-        
-    Raises:
-        FileNotFoundError: If project doesn't exist.
-    """
+def update_project_meta(project_name: str, updates: Dict[str, object]) -> ProjectMeta:
+    """Merge `updates` into project metadata and persist the result."""
     meta = load_project_meta(project_name)
     if meta is None:
         raise FileNotFoundError(f"Project not found: {project_name}")
-    
+
     meta.update(updates)
     save_project_meta(project_name, meta)
     return meta

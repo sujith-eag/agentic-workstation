@@ -26,7 +26,7 @@ class ProjectManagementController(BaseController):
             
             # Get project data from handlers (same as list_projects)
             # We need to call the service method directly since handle_list displays output
-            from ...services import ProjectService
+            from agentic_workflow.services import ProjectService
             project_service = ProjectService()
             result = project_service.list_projects()
             projects = result['projects']

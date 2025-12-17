@@ -12,8 +12,8 @@ from rich.text import Text
 import yaml
 
 # Import the schema to ensure we save valid data
-from ...core.schema import SystemConfig
-from ...core.exceptions import ConfigError
+from agentic_workflow.core.schema import SystemConfig
+from agentic_workflow.core.exceptions import ConfigError
 
 console = Console()
 
@@ -25,14 +25,14 @@ def run_setup_wizard() -> None:
     # For testing: auto-setup with defaults
     if os.environ.get('AGENTIC_AUTO_SETUP'):
         config_data = {
-            "default_workspace": str(Path.home() / "AgenticProjects"),
+            "default_workspace": "~/AgenticProjects",
             "editor_command": "code",
             "tui_enabled": True,
             "check_updates": True,
             "log_level": "INFO"
         }
         _save_config(config_data)
-        _ensure_workspace_exists(Path(config_data['default_workspace']))
+        _ensure_workspace_exists(Path(config_data['default_workspace']).expanduser())
         console.print("[green]✓ Auto-setup complete![/green]")
         return
 
@@ -45,14 +45,18 @@ def run_setup_wizard() -> None:
 
     try:
         # 2. Workspace Selection
-        default_ws = str(Path.home() / "AgenticProjects")
+        default_ws = "~/AgenticProjects"
+        choices = [
+            {"name": f"Default ({default_ws})", "value": default_ws},
+            {"name": "Current Directory", "value": str(Path.cwd())},
+            {"name": "Custom Path...", "value": "custom"}
+        ]
+        # Validate default is in choices
+        if default_ws not in [choice['value'] for choice in choices]:
+            default_ws = None
         ws_choice = questionary.select(
             "Where should we store your projects?",
-            choices=[
-                {"name": f"Default ({default_ws})", "value": default_ws},
-                {"name": "Current Directory", "value": str(Path.cwd())},
-                {"name": "Custom Path...", "value": "custom"}
-            ],
+            choices=choices,
             default=default_ws
         ).ask()
 

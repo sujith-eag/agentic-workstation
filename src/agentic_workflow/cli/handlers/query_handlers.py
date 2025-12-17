@@ -12,8 +12,8 @@ from typing import Optional, List
 import logging
 from pathlib import Path
 
-from ...core.exceptions import CLIExecutionError, handle_error, validate_required
-from ...services import LedgerService, ProjectService
+from agentic_workflow.core.exceptions import CLIExecutionError, handle_error, validate_required
+from agentic_workflow.services import LedgerService, ProjectService
 from ..utils import display_action_result, display_info, display_status_panel, display_warning
 from ..ui_utils import format_output
 
@@ -31,8 +31,8 @@ from typing import Optional
 import logging
 from pathlib import Path
 
-from ...core.exceptions import CLIExecutionError, handle_error, validate_required
-from ...services import LedgerService, ProjectService
+from agentic_workflow.core.exceptions import CLIExecutionError, handle_error, validate_required
+from agentic_workflow.services import LedgerService, ProjectService
 from ..utils import display_action_result, display_info, display_status_panel, display_error, shorten_path
 
 logger = logging.getLogger(__name__)

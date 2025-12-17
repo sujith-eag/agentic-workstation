@@ -1,6 +1,6 @@
 # Agentic Workflow OS CLI & TUI Reference
 
-**Version:** 1.0.5
+**Version:** 1.0.6
 **Generated:** December 15, 2025
 **Source:** Code Review Analysis & CLI Implementation
 
