@@ -126,8 +126,11 @@ class ContextResolver:
             'checkpoint': checkpoint,
 
             # Governance
-            'governance': wf.metadata.get('governance', {}),
-            'enforcement': wf.metadata.get('enforcement', {}),
+            'governance': {
+                'base_rules': wf.metadata.get('governance', {}).get('base_rules', []),
+                'workflow_rules': wf.metadata.get('globals', [])
+            },
+            'enforcement': wf.metadata.get('config', {}).get('enforcement', {}),
             'logging_policy': wf.metadata.get('logging_policy', {}),
 
             # Computed fields

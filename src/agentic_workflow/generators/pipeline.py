@@ -491,55 +491,16 @@ class InitPipeline:
             workflow_display_name = workflow_meta.get('display_name', project_model.workflow_type.capitalize())
             workflow_version = workflow_meta.get('version', '1.0')
             
-            context = {
-                'project_name': project_model.name,
-                'workflow_name': project_model.workflow_type,
-                'workflow_type': project_model.workflow_type,
-                'workflow_display_name': workflow_display_name,
-                'workflow_version': workflow_version,
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M'),
-                'agent_id': first_agent_id,
-                'agent_role': first_agent_role,
-                'current_phase': 'Ready for Activation',
-                'active_agent': first_agent_id,
-                'last_action': 'Project Created',
-                'session_status': 'ready_for_activation'
-            }
-
-            # Build registry entries from workflow data
-            registry_entries = []
-            for agent in agents:
-                owner = agent.get('role', agent.get('id', 'Unknown'))
-                produces = agent.get('produces', [])
-                
-                items = []
-                if isinstance(produces, list):
-                    items = produces
-                elif isinstance(produces, dict):
-                    for cat_items in produces.values():
-                        if isinstance(cat_items, list):
-                            items.extend(cat_items)
-                
-                for item in items:
-                    if isinstance(item, dict) and item.get('filename'):
-                        registry_entries.append({
-                            'name': item.get('filename'),
-                            'owner': owner,
-                            'description': item.get('description', '')
-                        })
-            
-            context['registry_entries'] = registry_entries
-
             # Generate active_session.md
             try:
                 if not first_agent_id:
                     # Create a simple uninitialized session file
                     session_content = f"""---
 session_type: uninitialized
-project_name: {context['project_name']}
-workflow_name: {context['workflow_type']}
+project_name: {project_model.name}
+workflow_name: {project_model.workflow_type}
 status: ready_for_activation
-timestamp: {context['timestamp']}
+timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 ---
 
 # WORKFLOW READY FOR ACTIVATION
@@ -561,13 +522,21 @@ The project has been initialized and is ready for the first agent activation.
 
 ## Workflow Status
 
-- **Status:** {context['current_phase']}
+- **Status:** Ready for Activation
 - **Next Agent:** A-01 (Project Guide & Idea Incubation)
-- **Workflow:** {context['workflow_display_name']}
+- **Workflow:** {workflow_display_name}
 """
                 else:
-                    # Use loader to render session template
-                    session_content = loader.render('_base/session_base.md.j2', context)
+                    # Use ContextResolver for proper session context building
+                    from ..utils.templating import ContextResolver
+                    resolver = ContextResolver()
+                    session_context = resolver.get_session_context(
+                        workflow=project_model.workflow_type,
+                        agent_id=first_agent_id,
+                        project_name=project_model.name,
+                        timestamp=datetime.now().isoformat()
+                    )
+                    session_content = loader.render('_base/session_base.md.j2', session_context)
                 
                 session_path = project_model.root_path / "agent_context" / "active_session.md"
                 vfs.append(VirtualFile(path=session_path, content=session_content))
@@ -577,7 +546,18 @@ The project has been initialized and is ready for the first agent activation.
 
             # Generate project_index.md
             try:
-                index_content = loader.render('_base/project_index.md.j2', context)
+                index_context = {
+                    'project_name': project_model.name,
+                    'workflow_name': project_model.workflow_type,
+                    'workflow_display_name': workflow_display_name,
+                    'workflow_version': workflow_version,
+                    'timestamp': datetime.now().isoformat(),
+                    'registry_entries': [],  # Empty initially
+                    'current_phase': 'INTAKE',
+                    'active_agent': first_agent_id or 'None',
+                    'last_action': 'Project initialized'
+                }
+                index_content = loader.render('_base/project_index.md.j2', index_context)
                 index_path = project_model.root_path / "project_index.md"
                 vfs.append(VirtualFile(path=index_path, content=index_content))
                 # Removed display_success call
@@ -587,7 +567,7 @@ The project has been initialized and is ready for the first agent activation.
                 fallback_content = f"""# {project_model.name} Project Index
 
 **Workflow:** {project_model.workflow_type}
-**Created:** {context['timestamp']}
+**Created:** {datetime.now().isoformat()}
 
 ## Directory Structure
 

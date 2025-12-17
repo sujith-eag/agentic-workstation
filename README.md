@@ -2,7 +2,7 @@
 
 > **Structured Architectural Scaffolding for AI Development**
 
-[![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
+[![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Agentic Workflow OS** is a development platform that orchestrates Multi-Agent Systems to plan, architect, and implement complex software projects. Unlike "Chat with Code" tools that rely on messy, unstructured conversation history, this system enforces a **Context-First** philosophy. It treats Agent Context as a file-system state machine, ensuring that your AI Engineer knows exactly what your AI Architect decided.

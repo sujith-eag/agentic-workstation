@@ -8,28 +8,38 @@
     enforcement: dict with keys: mode, checkpoint_gating, handoff_gating
 -#}
 
-{% if governance or enforcement %}
 ---
 
 ## Governance & Enforcement
 
-{% if governance.base_rules %}
+{% if governance and governance.base_rules %}
 ### Base Rules
 
 {% for rule in governance.base_rules %}
 - {{ rule }}
 {% endfor %}
+{% else %}
+### Base Rules
+
+- **Read Context First** — Always review context files before starting work
+- **Log Decisions** — Use CLI to record all significant decisions
+- **Log Assumptions** — Document assumptions with reasoning
+- **Produce Artifacts** — Write outputs to designated artifact directories
+- **Complete Handoff** — Use CLI for proper handoff with artifact list
 {% endif %}
 
-{% if governance.workflow_rules %}
+{% if governance and governance.workflow_rules %}
 ### Workflow Rules
 
-{% for rule in governance.workflow_rules %}
+{% for category, rules in governance.workflow_rules.items() %}
+**{{ category | replace('_', ' ') | title }}:**
+{% for rule in rules %}
 - {{ rule }}
+{% endfor %}
+
 {% endfor %}
 {% endif %}
 
-{% if enforcement %}
 ### Enforcement Mode
 
 | Setting | Value |
@@ -45,6 +55,4 @@
 > ℹ️ **Lenient mode:** Warnings shown but not blocking. Review carefully.
 {% else %}
 > ⚡ **No enforcement:** All checks disabled.
-{% endif %}
-{% endif %}
 {% endif %}

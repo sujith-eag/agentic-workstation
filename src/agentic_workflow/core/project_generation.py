@@ -48,7 +48,7 @@ def create_project_from_workflow(workflow_type: str, project_name: str, target_p
     config = config_service.load_config()
 
     pipeline = InitPipeline(config)
-    pipeline.run(str(target_path), workflow_type)
+    pipeline.run(project_name, str(target_path), workflow_type)
 
     return {"status": "created", "path": target_path}
 

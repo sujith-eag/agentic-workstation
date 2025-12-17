@@ -87,16 +87,16 @@ class TemplateEngine:
             from importlib import resources
             # Try package-relative path first (for installed packages)
             try:
-                with resources.files('agentic_workflow').joinpath('templates') as templates_path:
-                    if templates_path.exists():
-                        # Add _base subdirectory for base templates
-                        base_templates = templates_path / "_base"
-                        if base_templates.exists():
-                            loaders.append(FileSystemLoader(str(base_templates)))
-                            searched_paths.append(str(base_templates))
-                        # Add main templates directory
-                        loaders.append(FileSystemLoader(str(templates_path)))
-                        searched_paths.append(str(templates_path))
+                templates_path = resources.files('agentic_workflow') / 'templates'
+                if templates_path.exists():
+                    # Add _base subdirectory for base templates
+                    base_templates = templates_path / "_base"
+                    if base_templates.exists():
+                        loaders.append(FileSystemLoader(str(base_templates)))
+                        searched_paths.append(str(base_templates))
+                    # Add main templates directory
+                    loaders.append(FileSystemLoader(str(templates_path)))
+                    searched_paths.append(str(templates_path))
             except (AttributeError, FileNotFoundError):
                 # Fallback to filesystem path (for development)
                 if TEMPLATES_DIR.exists():

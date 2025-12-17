@@ -6,7 +6,7 @@ fields so the architecture mapper can statically extract data schemas.
 
 from pydantic import BaseModel
 from pathlib import Path
-from typing import Dict, List, TypedDict
+from typing import Dict, List, TypedDict, Any
 
 
 # Public exports from this module
@@ -35,7 +35,7 @@ class ProjectModel(BaseModel):
     name: str
     root_path: Path
     workflow_type: str
-    context_data: TemplateContext  # Data for template rendering
+    context_data: Dict[str, Any]  # Data for template rendering
 
 
 class PipelineResult(BaseModel):

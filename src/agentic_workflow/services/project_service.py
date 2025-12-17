@@ -83,6 +83,13 @@ class ProjectService:
         pipeline = InitPipeline(self.config)
         result = pipeline.run(project_name, str(target_path), workflow_name or "planning", force)
 
+        # Update project index with current state (populates artifact registry)
+        if result.success:
+            try:
+                self.update_project_index(project_name)
+            except Exception as e:
+                logger.warning(f"Failed to update project index after initialization: {e}")
+
         return result
 
     def project_exists(self, project_name: str) -> bool:
@@ -252,6 +259,10 @@ class ProjectService:
         try:
             manager = SessionManager(project_path)
             manager.activate_agent(agent_id)
+            
+            # Update project index with new state
+            self.update_project_index(project_name)
+            
         except Exception as e:
             raise ProjectError(f"Activation failed: {e}", cause=e)
 
@@ -265,6 +276,195 @@ class ProjectService:
             'previous_stage': current_stage if stage_advanced else None,
             'current_stage': agent_stage if stage_advanced else current_stage
         }
+
+    def update_project_index(self, project_name: str) -> Dict[str, Any]:
+        """
+        Update the project_index.md file with current project state.
+
+        Args:
+            project_name: Name of the project
+
+        Returns:
+            Dictionary with update results
+
+        Raises:
+            ProjectError: If update fails
+        """
+        validate_required(project_name, "project_name", "update_project_index")
+
+        if not self.project_exists(project_name):
+            raise ProjectNotFoundError(f"Project '{project_name}' not found")
+
+        try:
+            # Get project path
+            from ..core.path_resolution import find_repo_root
+            repo_root = find_repo_root()
+            projects_dir = repo_root / self.config.system.default_workspace
+            project_path = projects_dir / project_name
+
+            # Load project config
+            project_meta = self._load_project_config(project_path / '.agentic' / 'config')
+            workflow_name = project_meta.get('workflow', 'planning')
+
+            # Load workflow data
+            from ..generation.canonical_loader import load_workflow
+            wf = load_workflow(workflow_name)
+
+            # Get current state
+            current_phase = self._get_current_stage(project_name)
+            active_agent = self._get_active_agent(project_name)
+            last_action = self._get_last_action(project_name)
+
+            # Get workflow metadata
+            workflow_display_name = wf.display_name
+            workflow_version = wf.version
+
+            # Build artifact registry
+            registry_entries = self._build_artifact_registry(project_path, wf)
+
+            # Build context for template
+            context = {
+                'project_name': project_name,
+                'workflow_name': workflow_name,
+                'workflow_display_name': workflow_display_name,
+                'workflow_version': workflow_version,
+                'timestamp': get_timestamp(),
+                'registry_entries': registry_entries,
+                'current_phase': current_phase,
+                'active_agent': active_agent,
+                'last_action': last_action
+            }
+
+            # Render template
+            from ..utils.templating import TemplateEngine
+            loader = TemplateEngine(workflow=workflow_name)
+            content = loader.render('_base/project_index.md.j2', context)
+
+            # Write updated file
+            index_path = project_path / 'project_index.md'
+            write_file(index_path, content)
+
+            return {
+                'project_name': project_name,
+                'status': 'updated',
+                'index_path': str(index_path),
+                'current_phase': current_phase,
+                'active_agent': active_agent,
+                'last_action': last_action
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to update project index for '{project_name}': {e}")
+            raise ProjectError(f"Failed to update project index: {e}", cause=e)
+
+    def _build_artifact_registry(self, project_path: Path, workflow_package) -> list:
+        """
+        Build the artifact registry from the project's artifacts directory.
+
+        Args:
+            project_path: Path to the project directory
+            workflow_package: WorkflowPackage with agent information
+
+        Returns:
+            List of registry entries with name, owner, and description
+        """
+        registry_entries = []
+        artifacts_dir = project_path / 'artifacts'
+
+        if not artifacts_dir.exists():
+            return registry_entries
+
+        # Build agent lookup for role information
+        agent_lookup = {}
+        if hasattr(workflow_package, 'agents') and workflow_package.agents:
+            for agent in workflow_package.agents:
+                agent_id = agent.get('id', '')
+                if agent_id:
+                    agent_lookup[agent_id] = {
+                        'role': agent.get('role', 'Unknown'),
+                        'slug': agent.get('slug', 'unknown')
+                    }
+
+        # Scan artifact directories
+        for agent_dir in artifacts_dir.iterdir():
+            if not agent_dir.is_dir():
+                continue
+
+            # Extract agent ID from directory name (e.g., "A-01_incubation" -> "A-01")
+            agent_id = agent_dir.name.split('_')[0] if '_' in agent_dir.name else agent_dir.name
+
+            # Get agent info
+            agent_info = agent_lookup.get(agent_id, {'role': f'Agent {agent_id}', 'slug': 'unknown'})
+            agent_role = agent_info['role']
+
+            # Scan files in this agent's directory (recursively)
+            for file_path in agent_dir.rglob('*.md'):
+                if file_path.is_file():
+                    # Create human-readable name from filename
+                    filename = file_path.name
+                    name = filename.replace('.md', '').replace('_', ' ').title()
+
+                    # Create description based on agent and file
+                    description = f"Created by {agent_role}"
+
+                    registry_entries.append({
+                        'name': name,
+                        'owner': agent_role,
+                        'description': description
+                    })
+
+        # Sort by owner (agent role) for consistent ordering
+        registry_entries.sort(key=lambda x: x['owner'])
+
+        return registry_entries
+
+    def _get_active_agent(self, project_name: str) -> str:
+        """Get the currently active agent for a project."""
+        try:
+            from ..core.path_resolution import find_repo_root
+            repo_root = find_repo_root()
+            projects_dir = repo_root / self.config.system.default_workspace
+            project_path = projects_dir / project_name
+
+            # Read active session to get current agent
+            session_path = project_path / 'agent_context' / 'active_session.md'
+            if session_path.exists():
+                content = read_file(session_path)
+                # Extract agent_id from frontmatter
+                lines = content.split('\n')
+                for line in lines:
+                    if line.startswith('agent_id:'):
+                        return line.split(':', 1)[1].strip()
+            return 'None'
+        except Exception:
+            return 'Unknown'
+
+    def _get_last_action(self, project_name: str) -> str:
+        """Get the last action performed in the project."""
+        try:
+            from ..core.path_resolution import find_repo_root
+            repo_root = find_repo_root()
+            projects_dir = repo_root / self.config.system.default_workspace
+            project_path = projects_dir / project_name
+
+            # Check exchange log for recent handoffs
+            exchange_log = project_path / 'agent_log' / 'exchange_log.md'
+            if exchange_log.exists():
+                content = read_file(exchange_log)
+                # Look for the most recent handoff
+                if 'HO-' in content:
+                    return 'Agent handoff completed'
+
+            # Check context log for recent decisions
+            context_log = project_path / 'agent_log' / 'context_log.md'
+            if context_log.exists():
+                content = read_file(context_log)
+                if 'DEC-' in content:
+                    return 'Decision logged'
+
+            return 'Agent activated'
+        except Exception:
+            return 'Unknown'
 
     def end_session(self, project_name: str) -> Dict[str, Any]:
         """
@@ -327,17 +527,14 @@ class ProjectService:
         Returns:
             Config data dict, or empty dict if file not found
         """
-        # Try YAML (standard format)
-        yaml_file = config_path.with_suffix('.yaml')
-        if yaml_file.exists():
-            try:
-                import yaml
-                with open(yaml_file, 'r') as f:
-                    return yaml.safe_load(f) or {}
-            except Exception as e:
-                logger.warning(f"Failed to load YAML config {yaml_file}: {e}")
-        
-        return {}
+        # Use ConfigurationService to load project config properly
+        try:
+            project_config = ConfigurationService()
+            config = project_config.load_config(context_path=config_path.parent.parent)
+            return config.project.model_dump() if config.project else {}
+        except Exception as e:
+            logger.warning(f"Failed to load project config via ConfigurationService: {e}")
+            return {}
     
     def list_projects(self) -> Dict[str, Any]:
         """

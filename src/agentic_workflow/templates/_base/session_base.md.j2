@@ -66,17 +66,6 @@ agentic handoff --to {{ next_agent_id | default('NEXT') }} --artifacts "file1.md
 ```
 {% endblock %}
 
-{% block base_rules %}
-## Base Rules
-
-1. **Read Context First** — Always review `context_file` before starting work
-2. **Log Decisions** — Use CLI to record all significant decisions
-3. **Log Assumptions** — Document assumptions with reasoning
-4. **Log Assumptions** — Document assumptions with reasoning
-4. **Produce Artifacts** — Write outputs to `artifacts/` directory
-5. **Complete Handoff** — Use CLI for proper handoff with artifact list
-{% endblock %}
-
 {% block protocol %}
 ## Session Protocol
 
@@ -108,10 +97,12 @@ agentic handoff --to {{ next_agent_id | default('NEXT') }} --artifacts "file1.md
 | **Type** | {{ agent_type | default('core') }} |
 | **Purpose** | {{ purpose | default('See agent file for details') }} |
 
-{% if key_responsibilities %}
+{% if responsibilities %}
 ### Key Responsibilities
 
-{{ key_responsibilities | md_list }}
+{% for responsibility in responsibilities %}
+- {{ responsibility }}
+{% endfor %}
 {% endif %}
 {% endblock %}
 

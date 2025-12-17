@@ -164,7 +164,7 @@ class SessionManager:
             timestamp=datetime.datetime.now().isoformat()
         )
         content = engine.render("_base/session_base.md.j2", context)
-        sf.write_session_file(session_path, content)
+        session_path.write_text(content, encoding='utf-8')
 
 
     def _update_project_index(self, agent_role: str) -> None:
