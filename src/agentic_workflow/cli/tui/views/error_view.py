@@ -24,3 +24,6 @@ class ErrorView:
         )
         console.print(error_panel)
         input("\nPress Enter to continue...")
+
+
+__all__ = ["ErrorView"]

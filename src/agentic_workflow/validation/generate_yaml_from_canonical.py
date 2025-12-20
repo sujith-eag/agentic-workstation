@@ -27,8 +27,11 @@ except Exception:
     display_error("PyYAML is required. Install with: pip install pyyaml")
     raise
 
+__all__ = ["transform_human_instructions"]
+
 
 def find_repo_root():
+    """Find the repository root by locating the manifests directory."""
     cur = os.getcwd()
     while True:
         if os.path.isdir(os.path.join(cur, 'manifests')):
@@ -41,11 +44,13 @@ def find_repo_root():
 
 
 def load_json(path):
+    """Load JSON data from a file path."""
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
 def make_slug(text: str) -> str:
+    """Convert text to a slug format suitable for identifiers."""
     s = (text or '').strip().lower()
     s = re.sub(r'[^a-z0-9\s]', ' ', s)
     s = '_'.join(s.split())
@@ -58,6 +63,7 @@ def make_slug(text: str) -> str:
 
 
 def transform_human_instructions(human_instr: dict, canonical_agents: list):
+    """Transform human-readable instructions into canonical format."""
     lookup = {}
     for a in canonical_agents:
         role = (a.get('role') or '').strip().lower()
@@ -118,6 +124,7 @@ def transform_human_instructions(human_instr: dict, canonical_agents: list):
 
 
 def main():
+    """Main entry point for YAML generation CLI."""
     p = argparse.ArgumentParser(description='Generate YAML from canonical JSON manifests')
     p.add_argument('workflow', help='Workflow name (directory under manifests/_canonical)')
     p.add_argument('--output', '-o', help='Output YAML path')

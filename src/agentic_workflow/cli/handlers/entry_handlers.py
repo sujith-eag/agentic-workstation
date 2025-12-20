@@ -27,6 +27,7 @@ class EntryHandlers:
     """
 
     def __init__(self):
+        """Initialize the EntryHandlers with required services."""
         self.ledger_service = LedgerService()
 
     def handle_handoff(
@@ -331,3 +332,6 @@ class EntryHandlers:
 
         except Exception as e:
             handle_error(e, "blocker recording", {"project": project, "title": title})
+
+
+__all__ = ["EntryHandlers"]

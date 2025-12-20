@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """UI utility functions for Agentic Workflow CLI."""
 import sys
-from typing import Any, Dict, List, NoReturn
+from typing import Any, Dict, List, NoReturn, Optional
 import click
 from rich.console import Console
 from rich.table import Table
@@ -70,7 +70,7 @@ def setup_logging(verbose: bool = False, log_level: str = "INFO") -> None:
     )
 
 
-def format_output(data: Any, format_type: str = "table", title: str = None) -> None:
+def format_output(data: Any, format_type: str = "table", title: Optional[str] = None) -> None:
     """Format data for output in various formats."""
     if format_type == "json":
         import json
@@ -188,7 +188,7 @@ def display_help_panel(title: str, commands: List[Dict[str, str]]) -> None:
     console.print(panel)
 
 
-def display_action_result(action: str, success: bool, details: List[str] = None, icon: str = None) -> None:
+def display_action_result(action: str, success: bool, details: Optional[List[str]] = None, icon: Optional[str] = None) -> None:
     """Standardized action completion display with optional details."""
     if icon is None:
         icon = "✓" if success else "✗"

@@ -6,16 +6,16 @@ Loads canonical JSON, denormalizes data, writes YAML with comments.
 
 Usage:
     # Generate for specific workflow
-    python3 -m scripts.generation.generate_workflow_yaml --workflow planning
+    python3 -m agentic_workflow.generation.generate_workflow_yaml --workflow planning
     
     # Generate for all workflows
-    python3 -m scripts.generation.generate_workflow_yaml --all
+    python3 -m agentic_workflow.generation.generate_workflow_yaml --all
     
     # Dry run (show what would be generated)
-    python3 -m scripts.generation.generate_workflow_yaml --workflow planning --dry-run
+    python3 -m agentic_workflow.generation.generate_workflow_yaml --workflow planning --dry-run
     
     # Generate with verbose output
-    python3 -m scripts.generation.generate_workflow_yaml --workflow planning --verbose
+    python3 -m agentic_workflow.generation.generate_workflow_yaml --workflow planning --verbose
 """
 
 import argparse
@@ -45,11 +45,14 @@ from agentic_workflow.cli.utils import display_info, display_error, display_succ
 WORKFLOWS_DIR = Path(__file__).resolve().parents[2] / "manifests" / "workflows"
 ROOT = Path(__file__).resolve().parents[2]
 
+__all__ = ["GenerationReport", "generate_workflow"]
+
 
 class GenerationReport:
     """Tracks generation progress and creates summary report."""
     
     def __init__(self):
+        """Initialize the GenerationReport with empty tracking lists."""
         self.start_time = datetime.now()
         self.workflows_processed: List[str] = []
         self.files_created: List[Path] = []
@@ -211,6 +214,8 @@ def generate_workflow(
         files = write_all_yaml(yaml_data, output_dir, display_name)
         for f in files:
             report.add_file(f)
+        for f in files:
+            display_success(f"  Written: {f}")
     except Exception as e:
         report.add_error(f"{workflow_id}: Failed to write YAML: {e}")
         display_error(f"Failed to write YAML: {e}")

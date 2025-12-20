@@ -22,11 +22,12 @@ except ImportError:
 
 from .schema import SystemConfig, ProjectConfig, WorkflowRules, RuntimeConfig
 from .exceptions import ConfigError
+from .paths import find_project_root
 import logging
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["ConfigurationService", "find_project_root", "find_repo_root"]
+__all__ = ["ConfigurationService"]
 
 
 class RawConfig(TypedDict, total=False):
@@ -73,18 +74,6 @@ class ConfigurationService:
         except Exception as e:
             raise ConfigError(f"Failed to create default config: {e}")
 
-    def find_project_root(self, start_path: Optional[Path] = None) -> Optional[Path]:
-        """Locate the project root by searching for a .agentic directory or project_index.md."""
-        if start_path is None:
-            start_path = Path.cwd()
-
-        current = start_path.resolve()
-        while current != current.parent:
-            if (current / ".agentic").is_dir() or (current / "project_index.md").exists():
-                return current
-            current = current.parent
-        return None
-
     def load_config(self, context_path: Optional[Path] = None, verbose: bool = False, force: bool = False) -> RuntimeConfig:
         """Load and return the merged `RuntimeConfig` assembled from all layers."""
         self.ensure_system_configured()
@@ -99,7 +88,7 @@ class ConfigurationService:
             config.system = SystemConfig(**global_data)
 
         # Layer 3 & 4: Project and Workflow
-        project_root = self.find_project_root(context_path)
+        project_root = find_project_root(context_path)
         if project_root:
             # Project config from <project>/.agentic/config.yaml
             project_config_path = project_root / ".agentic" / "config.yaml"
@@ -157,38 +146,4 @@ class ConfigurationService:
 
 
 # Standalone utility functions for backward compatibility
-def find_repo_root(start_path: Optional[Path] = None) -> Path:
-    """
-    Find the repository root by looking for common indicators
-
-    Design Decision: Look for .git directory, src/ directory, or config/ directory
-    """
-    if start_path is None:
-        start_path = Path.cwd()
-
-    current = start_path.resolve()
-
-    # Walk up the directory tree
-    for path in [current] + list(current.parents):
-        if (path / '.git').is_dir() or \
-           (path / 'src').is_dir() or \
-           (path / 'config').is_dir():
-            return path
-
-    # Fallback to current directory
-    return start_path
-
-
-def find_project_root(start_path: Optional[Path] = None) -> Optional[Path]:
-    """
-    Find the project root by looking for .agentic/ directory or project_index.md
-    """
-    if start_path is None:
-        start_path = Path.cwd()
-
-    current = start_path.resolve()
-    while current != current.parent:
-        if (current / ".agentic").is_dir() or (current / "project_index.md").exists():
-            return current
-        current = current.parent
-    return None
+# Note: These have been moved to core/paths.py for consolidation

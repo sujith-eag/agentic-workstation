@@ -72,3 +72,6 @@ def status(ctx: click.Context):
         query_handlers.handle_status(project=project_name)
     except Exception as e:
         display_error(f"Status check failed: {e}")
+
+
+__all__ = ["list_projects", "delete_project", "list_pending", "list_blockers", "status"]

@@ -18,6 +18,7 @@ class BaseController(ABC):
     """Base class for menu controllers."""
 
     def __init__(self, app):
+        """Initialize the base controller with the TUI app instance."""
         self.app = app
 
     @abstractmethod
@@ -74,3 +75,6 @@ class BaseController(ABC):
     def handle_success(self, message: str) -> None:
         """Handle controller success consistently."""
         display_success(message)
+
+
+__all__ = ["BaseController"]

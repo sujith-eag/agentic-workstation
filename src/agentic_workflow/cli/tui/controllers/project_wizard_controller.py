@@ -78,3 +78,6 @@ class ProjectWizardController(BaseController):
             "Select workflow type:",
             choices=workflow_choices
         ).ask()
+
+
+__all__ = ["ProjectWizardController"]

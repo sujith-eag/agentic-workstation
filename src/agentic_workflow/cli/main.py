@@ -149,3 +149,6 @@ if __name__ == "__main__":
     except Exception as e:
         display_error(f"Unexpected system error: {e}")
         sys.exit(1)
+
+
+__all__ = ["cli"]

@@ -60,7 +60,7 @@ class TemplateEngine:
 
         # 1. User Project Override (Highest Priority)
         try:
-            from agentic_workflow.core.path_resolution import find_project_root
+            from agentic_workflow.core.paths import find_project_root
             project_root = find_project_root()
             if project_root:
                 user_templates = project_root / ".agentic" / "templates"
@@ -68,7 +68,7 @@ class TemplateEngine:
                     loaders.append(FileSystemLoader(str(user_templates)))
                     searched_paths.append(str(user_templates))
         except ImportError:
-            pass  # path_resolution might not be available
+            pass  # paths module should always be available
 
         # 2. Workflow Root Override
         if workflow_root and workflow_root.exists():
@@ -263,3 +263,5 @@ class TemplateEngine:
             return Path(filename) if filename else None
         except TemplateNotFound:
             return None
+
+__all__ = ["TemplateEngine"]

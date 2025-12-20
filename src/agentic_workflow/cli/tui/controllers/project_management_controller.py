@@ -105,3 +105,5 @@ class ProjectManagementController(BaseController):
                 display_error(f"Failed to remove project: {e}")
         else:
             display_info("Project removal cancelled.")
+            
+__all__ = ["ProjectManagementController"]

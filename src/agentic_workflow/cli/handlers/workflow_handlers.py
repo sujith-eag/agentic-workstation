@@ -15,6 +15,7 @@ class WorkflowHandlers:
     """Handlers for advanced workflow operations."""
 
     def __init__(self, config=None):
+        """Initialize the WorkflowHandlers with optional config."""
         self.config = config
 
     def handle_set_stage(
@@ -66,3 +67,6 @@ class WorkflowHandlers:
                     
         except Exception as e:
             handle_error(e, "gate check", {"project": project})
+
+
+__all__ = ["WorkflowHandlers"]

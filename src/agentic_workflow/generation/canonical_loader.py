@@ -72,19 +72,23 @@ class WorkflowPackage:
 
     @property
     def display_name(self) -> str:
+        """Get the human-readable display name for this workflow."""
         return self.metadata.get("display_name", self.name.title())
 
     @property
     def description(self) -> str:
+        """Get the workflow description."""
         return self.metadata.get("description", "")
 
     @property
     def pipeline_order(self) -> List[str]:
+        """Get the ordered list of agent IDs in the workflow pipeline."""
         return self.metadata.get("pipeline", {}).get("order", [])
 
     @property
     def checkpoints(self) -> List[Dict[str, Any]]:
-        return self.metadata.get("pipeline", {}).get("checkpoints", [])
+        """Get the workflow checkpoints configuration."""
+        return self.metadata.get("checkpoints", [])
 
     @property
     def display_config(self) -> Dict[str, Any]:
@@ -296,15 +300,19 @@ def load_workflow(name: str) -> WorkflowPackage:
 # =============================================================================
 
 def get_default_workflow() -> str:
+    """Get the default workflow name."""
     return "planning"
 
 def get_workflow_agents(name: str) -> List[Dict[str, Any]]:
+    """Get agents for a workflow by name."""
     return load_workflow(name).agents
 
 def get_workflow_artifacts(name: str) -> List[Dict[str, Any]]:
+    """Get artifacts for a workflow by name."""
     return load_workflow(name).artifacts
 
 def get_workflow_instructions(name: str) -> Dict[str, Any]:
+    """Get instructions for a workflow by name."""
     return load_workflow(name).instructions
 
 # =============================================================================

@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class CreateProjectResult(TypedDict):
+    """Result of project creation operation."""
     status: str
     path: Path
 
@@ -39,7 +40,7 @@ class CreateProjectResult(TypedDict):
 __all__ = ["create_project_from_workflow"]
 
 
-def create_project_from_workflow(workflow_type: str, project_name: str, target_path: Path) -> CreateProjectResult:
+def create_project_from_workflow(workflow_type: str, project_name: str, target_path: Path, description: str = None) -> CreateProjectResult:
     """Create a new project at `target_path` using the named workflow type."""
     from ..core.config_service import ConfigurationService
     from ..generators.pipeline import InitPipeline
@@ -48,7 +49,7 @@ def create_project_from_workflow(workflow_type: str, project_name: str, target_p
     config = config_service.load_config()
 
     pipeline = InitPipeline(config)
-    pipeline.run(project_name, str(target_path), workflow_type)
+    pipeline.run(project_name, str(target_path), workflow_type, description=description)
 
     return {"status": "created", "path": target_path}
 

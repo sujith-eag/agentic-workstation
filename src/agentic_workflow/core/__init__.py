@@ -5,7 +5,6 @@ This module provides foundational utilities used across all scripts:
 - project: Project metadata operations
 - io: File I/O helpers
 - config: Configuration management system
-- path_resolution: Dynamic path resolution for CLI-script interactions
 - governance: Governance rule engine
 - exceptions: Comprehensive error handling
 
@@ -57,7 +56,7 @@ from .io import (
 #     ConfigMergeError,
 #     ValidationResult,
 # )
-from .path_resolution import (
+from .paths import (
     resolve_path,
     resolve_config_paths,
     get_project_dirs,
@@ -67,6 +66,8 @@ from .path_resolution import (
     validate_project_structure,
     ResolvedPath,
     PathResolutionError,
+    find_repo_root,
+    find_project_root,
 )
 
 __all__ = [
@@ -109,6 +110,8 @@ __all__ = [
     'validate_project_structure',
     'ResolvedPath',
     'PathResolutionError',
+    'find_repo_root',
+    'find_project_root',
     # Governance
     'get_governance_engine',
     'validate_governance',

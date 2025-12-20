@@ -24,7 +24,7 @@ from agentic_workflow.core.exceptions import (
 # Use late import for config functions to avoid circular deps if needed,
 # or import standard constants/types.
 from agentic_workflow.core.config_service import ConfigurationService
-from agentic_workflow.core.path_resolution import get_project_dirs, get_workflow_paths
+from .paths import get_project_dirs, get_workflow_paths
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -54,31 +54,37 @@ __all__ = [
 
 # TypedDicts to expose expected config/data shapes for static analysis
 class GovernanceConfig(TypedDict, total=False):
+    """Configuration for governance rules and strictness levels."""
     strictness: Dict[str, str]
     rules: Dict[str, object]
 
 
 class ProjectMetadata(TypedDict, total=False):
+    """Metadata for a project."""
     name: str
     description: str
     created: Optional[str]
 
 
 class AgentMetadata(TypedDict, total=False):
+    """Metadata for an agent."""
     role: Optional[str]
     capabilities: Optional[List[str]]
 
 
 class RuntimeConfig(TypedDict, total=False):
+    """Runtime configuration including governance settings."""
     governance: GovernanceConfig
 
 
 class ProjectData(TypedDict, total=False):
+    """Data structure for project information in governance checks."""
     path: str
     metadata: ProjectMetadata
 
 
 class AgentData(TypedDict, total=False):
+    """Data structure for agent information in governance checks."""
     id: str
     stage: str
     consumes_core: List[str]
@@ -86,6 +92,7 @@ class AgentData(TypedDict, total=False):
 
 
 class Violation(TypedDict, total=False):
+    """Structure for governance rule violations."""
     rule: str
     description: str
     error_message: str
@@ -94,6 +101,7 @@ class Violation(TypedDict, total=False):
 
 
 class Warning(TypedDict, total=False):
+    """Structure for governance warnings."""
     message: str
     rule: Optional[str]
     level: Optional[str]
@@ -101,6 +109,7 @@ class Warning(TypedDict, total=False):
 
 
 class GovernanceData(TypedDict, total=False):
+    """Complete data structure for governance validation."""
     project_path: str
     project: ProjectData
     agent: AgentData
@@ -151,6 +160,7 @@ class GovernanceResult:
     context: str = ""
 
     def __bool__(self) -> bool:
+        """Return True if governance validation passed."""
         return self.passed
 
 
@@ -490,7 +500,7 @@ class GovernanceEngine:
             if not project_path:
                 return False
 
-            from agentic_workflow.core.path_resolution import validate_project_structure
+            from .paths import validate_project_structure
             issues = validate_project_structure(Path(project_path), self.config)
             return len(issues) == 0
         except Exception:

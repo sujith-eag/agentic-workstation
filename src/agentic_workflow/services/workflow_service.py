@@ -25,6 +25,7 @@ class WorkflowService:
     """Service for workflow operations."""
 
     def __init__(self):
+        """Initialize the WorkflowService with configuration."""
         config_service = ConfigurationService()
         self.config = config_service.load_config()
 

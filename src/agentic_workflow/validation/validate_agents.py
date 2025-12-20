@@ -28,6 +28,8 @@ WORKFLOWS_DIR = os.path.join(ROOT, 'manifests', 'workflows')
 DEFAULT_WORKFLOW = 'planning'
 ADVANCED_GOVERNANCE = os.getenv('ADVANCED_GOVERNANCE', '0').strip().lower() in ('1', 'true', 'yes', 'on')
 
+__all__ = ["validate_manifests", "lint_agent_prompts"]
+
 
 def load_yaml_file(path: str):
     """Load YAML file directly."""
@@ -170,6 +172,7 @@ def lint_agent_prompts(agent_files_map: Dict[int, str]) -> Tuple[List[str], List
 
 
 def main():
+    """Main entry point for agent validation CLI."""
     errors = []
     warnings = []
     
@@ -209,8 +212,8 @@ def main():
 
     # Additional: validate generated agent files and frontmatter match workflow formatting
     try:
-        from workflow import load_workflow, WorkflowError
-        from generation.generate_agents import get_agent_filename
+        from agentic_workflow.generation.canonical_loader import load_workflow, WorkflowError
+        from agentic_workflow.generation.generate_agents import get_agent_filename
         wf = load_workflow(workflow)
         # agent_files directory for this workflow (directly under ROOT)
         agent_files_dir = os.path.join(ROOT, 'agent_files', workflow)

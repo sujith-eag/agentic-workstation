@@ -198,3 +198,16 @@ def assumption(ctx: click.Context, assumption: str, rationale: str):
         )
     except Exception as e:
         display_error(f"Assumption recording failed: {e}")
+
+
+__all__ = [
+    "activate",
+    "handoff", 
+    "decision",
+    "end_session",
+    "check_handoff",
+    "feedback",
+    "blocker",
+    "iteration",
+    "assumption"
+]

@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional
 from ..core.schema import RuntimeConfig
 from ..core.governance import GovernanceEngine, GovernanceResult
 from ..core.project import load_project_meta
-from ..core.path_resolution import find_project_root
+from ..core.paths import find_project_root
 from ..generation.canonical_loader import load_workflow
 
 __all__ = ["GateChecker"]

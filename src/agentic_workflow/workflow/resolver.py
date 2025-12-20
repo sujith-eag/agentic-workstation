@@ -10,6 +10,12 @@ Usage:
 """
 from typing import Optional
 
+__all__ = [
+    "get_workflow_for_project",
+    "get_workflow_name_for_project",
+    "resolve_workflow"
+]
+
 from ..generation.canonical_loader import load_workflow, get_default_workflow, WorkflowPackage, WorkflowError
 
 from agentic_workflow.core.project import load_project_meta, get_project_workflow_name

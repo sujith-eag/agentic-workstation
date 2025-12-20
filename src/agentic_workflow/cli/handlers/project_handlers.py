@@ -19,6 +19,7 @@ class ProjectHandlers:
     """Handlers for static project management."""
 
     def __init__(self):
+        """Initialize the ProjectHandlers with required services."""
         self.project_service = ProjectService()
 
     def handle_list(
@@ -114,3 +115,6 @@ class ProjectHandlers:
                 display_info(f"  Workflow: {project['workflow']}")
                 display_info(f"  Description: {project['description']}")
                 display_info("")
+
+
+__all__ = ["ProjectHandlers"]

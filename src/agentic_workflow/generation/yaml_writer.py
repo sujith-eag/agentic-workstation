@@ -26,6 +26,8 @@ except ImportError:
     display_error("ERROR: pyyaml required. Install with: pip install pyyaml")
     sys.exit(1)
 
+__all__ = ["YamlWriter", "write_all_yaml"]
+
 
 class YamlWriter:
     """Writes YAML files with comments and consistent formatting."""
@@ -215,8 +217,6 @@ class YamlWriter:
             if governance:
                 f.write(self._section_divider("Governance Rules"))
                 f.write(self._yaml_dump({"governance": governance}))
-        
-        display_success(f"  Written: {output_path}")
     
     def write_agents_yaml(
         self, 
@@ -290,8 +290,6 @@ class YamlWriter:
                     elif line.strip():
                         f.write(f"    {line}\n")
                 f.write("\n")
-        
-        display_success(f"  Written: {output_path}")
     
     def _simplify_produces(self, produces: Dict[str, List[Dict]]) -> Dict[str, List[Dict]]:
         """Simplify produces structure for YAML output.
@@ -420,8 +418,6 @@ class YamlWriter:
                     # Same logic as above...
                     f.write(f"  - filename: {art['filename']}\n")
                     f.write(f"    owner: {art['owner']}\n")
-        
-        display_success(f"  Written: {output_path}")
     
     def write_instructions_yaml(
         self, 
@@ -498,8 +494,6 @@ class YamlWriter:
                     elif line.strip():
                         f.write(f"    {line}\n")
                 f.write("\n")
-        
-        display_success(f"  Written: {output_path}")
 
 
 def write_all_yaml(

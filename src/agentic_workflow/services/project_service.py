@@ -33,9 +33,10 @@ __all__ = ["ProjectService"]
 
 
 class ProjectService:
-    """Service for project operations."""
+    """Manages project lifecycle operations including initialization, activation, and management."""
 
     def __init__(self, config=None):
+        """Initialize the ProjectService with configuration and gate checker."""
         if config:
             self.config = config
         else:
@@ -47,8 +48,8 @@ class ProjectService:
     def init_project(
         self,
         project_name: str,
-        workflow_name: str = None,
-        description: str = None,
+        workflow_name: Optional[str] = None,
+        description: Optional[str] = None,
         force: bool = False
     ) -> PipelineResult:
         """
@@ -81,7 +82,7 @@ class ProjectService:
 
         # Initialize project using pipeline
         pipeline = InitPipeline(self.config)
-        result = pipeline.run(project_name, str(target_path), workflow_name or "planning", force)
+        result = pipeline.run(project_name, str(target_path), workflow_name or "planning", force, description)
 
         # Update project index with current state (populates artifact registry)
         if result.success:
@@ -104,7 +105,7 @@ class ProjectService:
         """
         validate_required(project_name, "project_name", "project_exists")
 
-        from ..core.path_resolution import find_repo_root
+        from ..core.paths import find_repo_root
         repo_root = find_repo_root()
         # Use the default workspace from system config
         projects_dir = self.config.system.default_workspace
@@ -247,7 +248,7 @@ class ProjectService:
             else:
                 logger.warning(f"Failed to auto-advance stage: {stage_result.get('error')}")
 
-        from ..core.path_resolution import find_repo_root
+        from ..core.paths import find_repo_root
         repo_root = find_repo_root()
         projects_dir = repo_root / self.config.system.default_workspace
         project_path = projects_dir / project_name
@@ -297,7 +298,7 @@ class ProjectService:
 
         try:
             # Get project path
-            from ..core.path_resolution import find_repo_root
+            from ..core.paths import find_repo_root
             repo_root = find_repo_root()
             projects_dir = repo_root / self.config.system.default_workspace
             project_path = projects_dir / project_name
@@ -421,7 +422,7 @@ class ProjectService:
     def _get_active_agent(self, project_name: str) -> str:
         """Get the currently active agent for a project."""
         try:
-            from ..core.path_resolution import find_repo_root
+            from ..core.paths import find_repo_root
             repo_root = find_repo_root()
             projects_dir = repo_root / self.config.system.default_workspace
             project_path = projects_dir / project_name
@@ -442,7 +443,7 @@ class ProjectService:
     def _get_last_action(self, project_name: str) -> str:
         """Get the last action performed in the project."""
         try:
-            from ..core.path_resolution import find_repo_root
+            from ..core.paths import find_repo_root
             repo_root = find_repo_root()
             projects_dir = repo_root / self.config.system.default_workspace
             project_path = projects_dir / project_name
@@ -511,7 +512,21 @@ class ProjectService:
 
         # Reset active_session.md
         loader = TemplateEngine(workflow=workflow_name)
-        context = {"project_name": project_name, "status": "ready"}
+        
+        # Load workflow to get enforcement config
+        from ..generation.canonical_loader import load_workflow
+        try:
+            wf = load_workflow(workflow_name)
+            enforcement = wf.metadata.get('config', {}).get('enforcement', {})
+        except Exception as e:
+            logger.warning(f"Failed to load workflow '{workflow_name}' for enforcement config: {e}")
+            enforcement = {}
+        
+        context = {
+            "project_name": project_name, 
+            "status": "ready",
+            "enforcement": enforcement
+        }
         fresh_content = loader.render('_base/session_base.md.j2', context)
         write_file(active_session_path, fresh_content)
 
@@ -676,7 +691,7 @@ class ProjectService:
                     }
             else:
                 # Get current project status (from current directory)
-                from ..core.path_resolution import find_project_root
+                from ..core.paths import find_project_root
 
                 project_root = find_project_root()
                 if not project_root:

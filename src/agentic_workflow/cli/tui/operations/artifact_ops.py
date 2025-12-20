@@ -20,8 +20,8 @@ class ArtifactOperations:
     """Operations for browsing and displaying project artifacts."""
 
     def __init__(self, app):
+        """Initialize artifact operations with application context."""
         self.app = app
-    """Operations for browsing and displaying project artifacts."""
 
     def execute(self, *args, **kwargs) -> Any:
         """Execute artifact management operation."""
@@ -114,3 +114,6 @@ class ArtifactOperations:
             self.display_artifact_content(full_path, relative_path)
 
         questionary.press_any_key_to_continue().ask()
+
+
+__all__ = ["ArtifactOperations"]

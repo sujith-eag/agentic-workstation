@@ -12,14 +12,14 @@ Functions:
 import json
 import sys
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional, Any
 
 __all__ = ["build_agent_files", "generate_agents", "generate_agents_for_project"]
 
 from agentic_workflow.generation.canonical_loader import load_workflow, WorkflowError
 from agentic_workflow.workflow.resolver import get_default_workflow
 from agentic_workflow.utils.templating import TemplateEngine, ContextResolver
-from agentic_workflow.core.path_resolution import find_repo_root
+from agentic_workflow.core.paths import find_repo_root
 from pathlib import Path as _Path
 
 
@@ -81,11 +81,11 @@ def build_agent_files(workflow_name: str, project_name: str) -> Dict[str, str]:
 
 def generate_agents(
     workflow_name: str,
-    output_dir: Path = None,
-    agent_filter: str = None,
+    output_dir: Optional[Path] = None,
+    agent_filter: Optional[str] = None,
     project_name: str = "project",
     dry_run: bool = False
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """Generate agent files using Jinja2 template engine.
     
     Uses the global agent_base.md.j2 template with context from canonical JSON.
@@ -156,9 +156,9 @@ def generate_agents(
 
 def generate_agents_for_project(
     project_name: str,
-    agent_filter: str = None,
+    agent_filter: Optional[str] = None,
     dry_run: bool = False
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """Generate agent files for a project using its workflow.
     
     Reads workflow from project's project_config.json metadata file.

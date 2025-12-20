@@ -44,3 +44,6 @@ def config(edit: bool):
         global_handlers.handle_config(edit=edit)
     except Exception as e:
         display_error(f"Config operation failed: {e}")
+
+
+__all__ = ["init", "list_workflows", "config"]

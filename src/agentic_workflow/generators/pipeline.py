@@ -1,7 +1,12 @@
 """
 Atomic Initialization Pipeline for Agentic Workflow projects.
 
-Implements the Staging-Commit pattern to ensure projects are created fully formed.
+CRITICAL COMPONENT: This is the core project creation engine.
+Implements the Staging-Commit pattern to ensure projects are created fully formed
+and can be safely refreshed without corruption.
+
+Used by: services/project_service.py and core/project_generation.py
+Handles: Complete project structure creation, template rendering, file staging
 """
 
 from pathlib import Path
@@ -25,9 +30,10 @@ class InitPipeline:
     """Pipeline for atomic project initialization."""
 
     def __init__(self, config: RuntimeConfig):
+        """Initialize the pipeline with runtime configuration."""
         self.config = config
 
-    def run(self, project_name: str, target_path: str, workflow: str, force: bool = False) -> PipelineResult:
+    def run(self, project_name: str, target_path: str, workflow: str, force: bool = False, description: str = None) -> PipelineResult:
         """Execute the full initialization pipeline."""
         # 1. Resolve Path
         target_path_obj = self._resolve_path(target_path)
@@ -36,7 +42,7 @@ class InitPipeline:
         self._validate_target(target_path_obj, force)
 
         # 3. Hydration
-        project_model = self._hydrate_model(project_name, target_path_obj, workflow)
+        project_model = self._hydrate_model(project_name, target_path_obj, workflow, description)
 
         # 4. Rendering
         vfs = self._render_templates(project_model)
@@ -53,8 +59,11 @@ class InitPipeline:
         if not target_path_obj.exists():
             raise AgenticWorkflowError(f"Project directory {target_path_obj} does not exist. Use run() for new projects.")
 
+        # Load existing description from config
+        existing_description = self._load_existing_description(target_path_obj)
+
         # 3. Hydration
-        project_model = self._hydrate_model(project_name, target_path_obj, workflow)
+        project_model = self._hydrate_model(project_name, target_path_obj, workflow, existing_description)
 
         # 4. Rendering
         vfs = self._render_templates(project_model)
@@ -64,6 +73,19 @@ class InitPipeline:
 
         # 6. Commit
         return self._commit_to_disk(filtered_vfs, project_model, refresh_mode=True)
+
+    def _load_existing_description(self, project_path: Path) -> str:
+        """Load existing description from project config."""
+        config_path = project_path / ".agentic" / "config.yaml"
+        if config_path.exists():
+            try:
+                import yaml
+                with open(config_path, 'r') as f:
+                    data = yaml.safe_load(f)
+                    return data.get('description', '') if data else ''
+            except Exception:
+                pass
+        return ''
 
     def _filter_for_refresh(self, vfs: List[VirtualFile], project_path: Path) -> List[VirtualFile]:
         """Filter virtual files for safe refresh operation."""
@@ -132,7 +154,7 @@ class InitPipeline:
             current = current.parent
         return False
 
-    def _hydrate_model(self, name: str, target_path: Path, workflow: str) -> ProjectModel:
+    def _hydrate_model(self, name: str, target_path: Path, workflow: str, description: str = None) -> ProjectModel:
         """Create the in-memory project model."""
         # Load workflow definition
         from ..generation.canonical_loader import load_canonical_workflow
@@ -143,6 +165,7 @@ class InitPipeline:
             'workflow_type': workflow,
             'workflow_data': workflow_data,
             'timestamp': datetime.now().isoformat(),  # Current date
+            'description': description or '',
         }
 
         return ProjectModel(
@@ -162,9 +185,10 @@ class InitPipeline:
         # Create .agentic directory structure
         agentic_dir = project_model.root_path / ".agentic"
         config_path = agentic_dir / "config.yaml"
+        description = project_model.context_data.get('description', '')
         vfs.append(VirtualFile(
             path=config_path,
-            content=f"workflow: {project_model.workflow_type}\nstrict_mode: true\n"
+            content=f"workflow: {project_model.workflow_type}\nstrict_mode: true\ndescription: \"{description}\"\n"
         ))
 
         # Generate agent files

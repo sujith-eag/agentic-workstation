@@ -12,8 +12,11 @@ from pathlib import Path
 import yaml
 from agentic_workflow.cli.utils import display_error
 
+__all__ = ["validate_handoff", "validate_workflow_handoff", "validate_feedback", "validate_iteration"]
+
 
 def validate_handoff(data):
+    """Validate handoff data structure."""
     errors = []
     if not data.get('source'):
         errors.append('missing source')
@@ -61,7 +64,7 @@ def validate_workflow_handoff(project_name: str, from_agent: str, to_agent: str,
             project_path = str(config.project.root_path)
         else:
             # Fallback: construct path
-            from agentic_workflow.core.path_resolution import get_projects_dir
+            from agentic_workflow.core.paths import get_projects_dir
             projects_dir = get_projects_dir(config.system)
             project_path = str(projects_dir / project_name)
         
@@ -125,6 +128,7 @@ def validate_workflow_handoff(project_name: str, from_agent: str, to_agent: str,
 
 
 def validate_feedback(data):
+    """Validate feedback data structure."""
     errors = []
     if not data.get('source'):
         errors.append('missing source')
@@ -134,11 +138,13 @@ def validate_feedback(data):
 
 
 def validate_iteration(data):
+    """Validate iteration data structure."""
     # iteration has loose requirements
     return []
 
 
 def main():
+    """Main entry point for ledger validation CLI."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--type', required=True, help='Event type to validate')
     args = parser.parse_args()

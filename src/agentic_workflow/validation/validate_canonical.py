@@ -42,6 +42,8 @@ AGENT_ID_PATTERN = re.compile(r"^[A-Z]{1,2}-[A-Z0-9]{2,6}$")
 SLUG_PATTERN = re.compile(r"^[a-z0-9_]+$")
 FILENAME_PATTERN = re.compile(r"^[a-z0-9_/]+\.(md|yaml|json|bib)$")
 
+__all__ = ["ValidationResult", "validate_workflow"]
+
 
 @dataclass
 class ValidationResult:
@@ -53,18 +55,23 @@ class ValidationResult:
     
     @property
     def passed(self) -> bool:
+        """Return True if validation passed (no errors)."""
         return len(self.errors) == 0
     
     def add_error(self, msg: str):
+        """Add an error message to the result."""
         self.errors.append(msg)
     
     def add_warning(self, msg: str):
+        """Add a warning message to the result."""
         self.warnings.append(msg)
     
     def add_info(self, msg: str):
+        """Add an info message to the result."""
         self.info.append(msg)
     
     def print_summary(self):
+        """Print a summary of the validation results."""
         status = "PASSED" if self.passed else "FAILED"
         display_info(f"Workflow: {self.workflow} - {status}")
         
@@ -593,6 +600,7 @@ def validate_workflow(workflow_name: str) -> ValidationResult:
 
 
 def main():
+    """Main entry point for canonical validation CLI."""
     import argparse
     parser = argparse.ArgumentParser(description="Validate canonical JSON manifests")
     parser.add_argument('--workflow', '-w', help='Specific workflow to validate')

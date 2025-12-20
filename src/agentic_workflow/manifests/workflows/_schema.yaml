@@ -212,7 +212,7 @@ validation:
 # 
 # Location: manifests/workflows/<workflow_name>/
 # Source: manifests/_canonical/<workflow_name>/*.json
-# Generator: scripts/generation/generate_workflow_yaml.py
+# Generator: src/agentic_workflow/generation/generate_workflow_yaml.py
 # ==========================================================================
 
 yaml_templates:
@@ -469,8 +469,8 @@ workflow_types:
 # PHASE 2: YAML GENERATION SCRIPTS
 # ==========================================================================
 generation:
-  script: "scripts/generation/generate_workflow_yaml.py"
-  usage: "python3 -m scripts.generation.generate_workflow_yaml --workflow planning"
+  script: "src/agentic_workflow/generation/generate_workflow_yaml.py"
+  usage: "python3 -m agentic_workflow.generation.generate_workflow_yaml --workflow planning"
   options:
     --workflow: "Specific workflow to generate (or --all)"
     --output: "Output directory (default: manifests/workflows/)"
@@ -508,7 +508,7 @@ prompt_generation:
 # ==========================================================================
 migration:
   from_json_to_yaml:
-    tool: "scripts/generation/generate_workflow_yaml.py"
+    tool: "src/agentic_workflow/generation/generate_workflow_yaml.py"
     note: "YAML files are generated, not manually maintained"
   
   legacy_yaml_handling:

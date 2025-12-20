@@ -34,3 +34,6 @@ class SystemInfoView(BaseView):
         info_table.add_row("Working Directory", str(data.get('working_directory', Path.cwd())))
 
         console.print(info_table)
+
+
+__all__ = ["SystemInfoView"]

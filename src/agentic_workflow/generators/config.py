@@ -1,9 +1,14 @@
 """
 Configuration generator for project creation.
 
-This module handles the logical generation of the project configuration dictionary,
+CRITICAL COMPONENT: This module is essential for project initialization.
+It handles the logical generation of the project configuration dictionary,
 merging app defaults with workflow-specific settings and governance rules.
+
+Used by: core/project_generation.py for creating .agentic/config.yaml
 """
+
+__all__ = ["generate_project_config"]
 
 import logging
 from datetime import datetime

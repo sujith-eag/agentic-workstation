@@ -19,6 +19,7 @@ class LedgerService:
     """Service for ledger operations."""
 
     def __init__(self):
+        """Initialize the LedgerService."""
         pass
 
     def record_handoff(self, project_name: str, from_agent: str, to_agent: str,

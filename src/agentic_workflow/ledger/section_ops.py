@@ -9,7 +9,20 @@ import re
 import datetime
 from datetime import timezone
 from pathlib import Path
+from typing import Dict, Any, List
 import yaml
+
+__all__ = [
+    "read_section",
+    "read_entry", 
+    "insert_entry_to_section",
+    "update_metadata",
+    "get_timestamp",
+    "ensure_yaml_sidecar",
+    "append_to_yaml_sidecar",
+    "read_yaml_section",
+    "find_entry_in_yaml"
+]
 
 
 def read_section(file_path: Path, section_name: str) -> str:
@@ -142,7 +155,7 @@ def insert_entry_to_section(file_path: Path, section_name: str, entry_type: str,
     return False
 
 
-def update_metadata(file_path: Path, updates: dict) -> bool:
+def update_metadata(file_path: Path, updates: Dict[str, Any]) -> bool:
     """Update values in the METADATA section.
     
     Args:
@@ -220,7 +233,7 @@ def ensure_yaml_sidecar(md_path: Path) -> Path:
     return yaml_path
 
 
-def append_to_yaml_sidecar(yaml_path: Path, section: str, entry: dict) -> bool:
+def append_to_yaml_sidecar(yaml_path: Path, section: str, entry: Dict[str, Any]) -> bool:
     """Append an entry to a section in the YAML sidecar.
     
     Entries are prepended (newest first) to match markdown order.
@@ -256,7 +269,7 @@ def append_to_yaml_sidecar(yaml_path: Path, section: str, entry: dict) -> bool:
     return True
 
 
-def read_yaml_section(yaml_path: Path, section: str) -> list:
+def read_yaml_section(yaml_path: Path, section: str) -> List[Dict[str, Any]]:
     """Read all entries from a YAML section.
     
     Args:
@@ -278,7 +291,7 @@ def read_yaml_section(yaml_path: Path, section: str) -> list:
     return data.get(section, [])
 
 
-def find_entry_in_yaml(yaml_path: Path, section: str, entry_id: str) -> dict:
+def find_entry_in_yaml(yaml_path: Path, section: str, entry_id: str) -> Dict[str, Any]:
     """Find a specific entry by ID in a YAML section.
     
     Args:

@@ -24,6 +24,7 @@ class TUIApp:
     """Main TUI Application Class"""
 
     def __init__(self, config=None):
+        """Initialize the TUI application with configuration."""
         self.config = config
         self.current_context = "project" if config and config.is_project_context else "global"
         self.project_root = config.project.root_path if config and config.project else None
@@ -119,3 +120,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+__all__ = ["TUIApp", "main"]

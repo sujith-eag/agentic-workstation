@@ -186,3 +186,5 @@ class ContextResolver:
             context.update(extra_subs)
 
         return context
+
+__all__ = ["ContextResolver"]

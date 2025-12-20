@@ -64,3 +64,6 @@ class GlobalHandlers:
                 display_info(content)
             else:
                 display_info("No global config found. Run 'agentic init' inside a folder to set it up.")
+
+
+__all__ = ["GlobalHandlers"]

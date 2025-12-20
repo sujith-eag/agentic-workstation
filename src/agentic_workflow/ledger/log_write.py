@@ -7,7 +7,10 @@ import datetime
 import sys
 from datetime import timezone
 from pathlib import Path
+from typing import Optional, Dict, Any
 import yaml
+
+__all__ = ["write_log"]
 
 from agentic_workflow.core.paths import PROJECTS_DIR
 
@@ -37,7 +40,7 @@ def _get_active_agent(project_dir: Path):
     return agent_name
 
 
-def write_log(project_name: str, log_file: str, entry_type: str, ref_id: str, summary: str, status: str, extra: dict = None):
+def write_log(project_name: str, log_file: str, entry_type: str, ref_id: str, summary: str, status: str, extra: Optional[Dict[str, Any]] = None):
     """Write a structured log entry to both MD and YAML ledgers.
     
     Args:

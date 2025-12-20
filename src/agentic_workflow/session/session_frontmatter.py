@@ -143,7 +143,7 @@ def ensure_context_file(project_dir: Path, context_file: str, agent_data: dict, 
     Returns:
         True if file was created, False if it already existed
     """
-    from agentic_workflow.core.path_resolution import get_templates_dir
+    from agentic_workflow.core.paths import get_templates_dir
     
     context_path = project_dir / context_file
     

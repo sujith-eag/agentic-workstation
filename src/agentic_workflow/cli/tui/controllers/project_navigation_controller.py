@@ -61,3 +61,6 @@ class ProjectNavigationController(BaseController):
     def _count_files(self, dir_path: Path) -> int:
         """Count total files in a directory recursively."""
         return len(list(dir_path.rglob("*")))
+
+
+__all__ = ["ProjectNavigationController"]

@@ -4,7 +4,26 @@ Provides functions to read and filter entries from exchange_log and context_log.
 Uses YAML sidecars for structured queries, with MD fallback.
 """
 from pathlib import Path
+from typing import Optional, List, Dict, Any
 import yaml
+
+__all__ = [
+    "get_handoffs",
+    "get_handoff_by_id",
+    "get_pending_handoffs",
+    "get_feedback",
+    "get_open_feedback",
+    "get_iterations",
+    "get_sessions",
+    "get_active_session",
+    "get_decisions",
+    "get_assumptions",
+    "get_active_assumptions",
+    "get_blockers",
+    "get_active_blockers",
+    "get_project_summary",
+    "get_agent_context_summary"
+]
 
 from agentic_workflow.ledger.section_ops import (
     read_section,
@@ -48,9 +67,9 @@ def _get_md_path(project_dir: Path, log_type: str) -> Path:
 
 # === Exchange Log Queries ===
 
-def get_handoffs(project_name: str, status: str = None, 
-                 from_agent: str = None, to_agent: str = None,
-                 limit: int = None) -> list:
+def get_handoffs(project_name: str, status: Optional[str] = None, 
+                 from_agent: Optional[str] = None, to_agent: Optional[str] = None,
+                 limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Get handoff entries from exchange_log.
     
     Args:
@@ -83,7 +102,7 @@ def get_handoffs(project_name: str, status: str = None,
     return entries
 
 
-def get_handoff_by_id(project_name: str, handoff_id: str) -> dict:
+def get_handoff_by_id(project_name: str, handoff_id: str) -> Dict[str, Any]:
     """Get a specific handoff by ID."""
     projects_dir = _get_projects_dir()
     project_dir = projects_dir / project_name
@@ -91,14 +110,14 @@ def get_handoff_by_id(project_name: str, handoff_id: str) -> dict:
     return find_entry_in_yaml(yaml_path, "handoffs", handoff_id)
 
 
-def get_pending_handoffs(project_name: str, to_agent: str = None) -> list:
+def get_pending_handoffs(project_name: str, to_agent: Optional[str] = None) -> List[Dict[str, Any]]:
     """Get pending handoffs, optionally filtered by target agent."""
     return get_handoffs(project_name, status="pending", to_agent=to_agent)
 
 
-def get_feedback(project_name: str, status: str = None,
-                 target: str = None, severity: str = None,
-                 limit: int = None) -> list:
+def get_feedback(project_name: str, status: Optional[str] = None,
+                 target: Optional[str] = None, severity: Optional[str] = None,
+                 limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Get feedback entries from exchange_log."""
     projects_dir = _get_projects_dir()
     project_dir = projects_dir / project_name
@@ -119,12 +138,12 @@ def get_feedback(project_name: str, status: str = None,
     return entries
 
 
-def get_open_feedback(project_name: str, target: str = None) -> list:
+def get_open_feedback(project_name: str, target: Optional[str] = None) -> List[Dict[str, Any]]:
     """Get open feedback tickets."""
     return get_feedback(project_name, status="open", target=target)
 
 
-def get_iterations(project_name: str, limit: int = None) -> list:
+def get_iterations(project_name: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Get iteration entries from exchange_log."""
     projects_dir = _get_projects_dir()
     project_dir = projects_dir / project_name
@@ -140,8 +159,8 @@ def get_iterations(project_name: str, limit: int = None) -> list:
 
 # === Context Log Queries ===
 
-def get_sessions(project_name: str, agent_id: str = None,
-                 status: str = None, limit: int = None) -> list:
+def get_sessions(project_name: str, agent_id: Optional[str] = None,
+                 status: Optional[str] = None, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Get session entries from context_log."""
     projects_dir = _get_projects_dir()
     project_dir = projects_dir / project_name
@@ -160,7 +179,7 @@ def get_sessions(project_name: str, agent_id: str = None,
     return entries
 
 
-def get_active_session(project_name: str) -> dict:
+def get_active_session(project_name: str) -> Dict[str, Any]:
     """Get the current active session from active_session.md frontmatter."""
     projects_dir = _get_projects_dir()
     project_dir = projects_dir / project_name
@@ -193,8 +212,8 @@ def get_active_session(project_name: str) -> dict:
     return {}
 
 
-def get_decisions(project_name: str, agent: str = None,
-                  scope: str = None, limit: int = None) -> list:
+def get_decisions(project_name: str, agent: Optional[str] = None,
+                  scope: Optional[str] = None, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Get decision entries from context_log."""
     projects_dir = _get_projects_dir()
     project_dir = projects_dir / project_name
@@ -213,8 +232,8 @@ def get_decisions(project_name: str, agent: str = None,
     return entries
 
 
-def get_assumptions(project_name: str, agent: str = None,
-                    status: str = None, limit: int = None) -> list:
+def get_assumptions(project_name: str, agent: Optional[str] = None,
+                    status: Optional[str] = None, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Get assumption entries from context_log."""
     projects_dir = _get_projects_dir()
     project_dir = projects_dir / project_name
@@ -233,13 +252,13 @@ def get_assumptions(project_name: str, agent: str = None,
     return entries
 
 
-def get_active_assumptions(project_name: str) -> list:
+def get_active_assumptions(project_name: str) -> List[Dict[str, Any]]:
     """Get all active assumptions."""
     return get_assumptions(project_name, status="active")
 
 
-def get_blockers(project_name: str, status: str = None,
-                 blocked_agent: str = None, limit: int = None) -> list:
+def get_blockers(project_name: str, status: Optional[str] = None,
+                 blocked_agent: Optional[str] = None, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Get blocker entries from context_log."""
     projects_dir = _get_projects_dir()
     project_dir = projects_dir / project_name
@@ -259,14 +278,14 @@ def get_blockers(project_name: str, status: str = None,
     return entries
 
 
-def get_active_blockers(project_name: str, agent: str = None) -> list:
+def get_active_blockers(project_name: str, agent: Optional[str] = None) -> List[Dict[str, Any]]:
     """Get pending blockers."""
     return get_blockers(project_name, status="pending", blocked_agent=agent)
 
 
 # === Summary Functions ===
 
-def get_project_summary(project_name: str) -> dict:
+def get_project_summary(project_name: str) -> Dict[str, Any]:
     """Get a summary of the project state from logs."""
     return {
         'pending_handoffs': len(get_pending_handoffs(project_name)),
@@ -279,7 +298,7 @@ def get_project_summary(project_name: str) -> dict:
     }
 
 
-def get_agent_context_summary(project_name: str, agent_id: str) -> dict:
+def get_agent_context_summary(project_name: str, agent_id: str) -> Dict[str, Any]:
     """Get context relevant to a specific agent."""
     return {
         'pending_handoffs_to_me': get_pending_handoffs(project_name, to_agent=agent_id),

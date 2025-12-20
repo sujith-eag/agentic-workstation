@@ -12,12 +12,11 @@ from enum import Enum
 
 
 class LogLevel(str, Enum):
+    """Enumerate supported logging levels used across the system."""
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
     ERROR = "ERROR"
-
-    """Enumerate supported logging levels used across the system."""
 
 
 # Public API
@@ -104,6 +103,10 @@ class ProjectConfig(BaseModel):
     strict_mode: bool = Field(
         default=True,
         description="Enforce strict governance rules"
+    )
+    description: str = Field(
+        default="",
+        description="Project description"
     )
     excluded_paths: List[str] = Field(
         default_factory=list,

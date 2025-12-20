@@ -18,6 +18,7 @@ class BaseView(ABC):
     """Base class for view components."""
 
     def __init__(self):
+        """Initialize the base view with console instance."""
         self.console = console
 
     @abstractmethod

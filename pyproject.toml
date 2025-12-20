@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentic-workstation"
-version = "1.0.7"
+version = "1.0.8"
 description = "Multi-agent planning and workflow orchestration system"
 readme = "README.md"
 license = "MIT"

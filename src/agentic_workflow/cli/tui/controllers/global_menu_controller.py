@@ -76,3 +76,6 @@ class GlobalMenuController(BaseController):
         elif choice == "exit":
             import sys
             sys.exit(0)
+
+
+__all__ = ["GlobalMenuController"]

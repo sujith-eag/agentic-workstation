@@ -101,3 +101,6 @@ class ProjectSummaryView(BaseView):
             for step in next_steps:
                 console.print(f"  {step}")
             console.print()
+
+
+__all__ = ["ProjectListView", "ProjectStatusView", "ProjectSummaryView"]

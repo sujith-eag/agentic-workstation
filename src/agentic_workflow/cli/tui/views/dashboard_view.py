@@ -151,3 +151,6 @@ class DashboardView(BaseView):
         except ValueError:
             # Fallback for unexpected formats
             return ts_str[:16]
+
+
+__all__ = ["DashboardView"]

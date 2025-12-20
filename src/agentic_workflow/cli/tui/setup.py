@@ -5,6 +5,7 @@ Triggers on first run to populate ~/.config/agentic/config.yaml.
 import os
 import sys
 import questionary
+from questionary import Choice
 from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
@@ -46,18 +47,24 @@ def run_setup_wizard() -> None:
     try:
         # 2. Workspace Selection
         default_ws = "~/AgenticProjects"
+        # Use explicit Choice objects instead of dictionaries
+        # This prevents internal mismatch errors in questionary validation
         choices = [
-            {"name": f"Default ({default_ws})", "value": default_ws},
-            {"name": "Current Directory", "value": str(Path.cwd())},
-            {"name": "Custom Path...", "value": "custom"}
+            Choice(title=f"Default ({default_ws})", value=default_ws),
+            Choice(title="Current Directory", value=str(Path.cwd())),
+            Choice(title="Custom Path...", value="custom")
         ]
-        # Validate default is in choices
-        if default_ws not in [choice['value'] for choice in choices]:
-            default_ws = None
+
+        # Validate default is in choices (Check against Choice.value)
+        valid_values = [c.value for c in choices]
+        
+        if default_ws not in valid_values:
+            default_ws = None 
+
         ws_choice = questionary.select(
             "Where should we store your projects?",
             choices=choices,
-            default=default_ws
+            default=default_ws 
         ).ask()
 
         if ws_choice == "custom":
@@ -146,3 +153,6 @@ def _ensure_workspace_exists(path: Path) -> None:
             console.print(f"[dim]Created workspace directory: {path}[/dim]")
     except Exception as e:
         console.print(f"[yellow]Warning: Could not create workspace directory: {e}[/yellow]")
+
+
+__all__ = ["run_setup_wizard"]

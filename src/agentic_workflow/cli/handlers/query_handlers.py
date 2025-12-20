@@ -41,6 +41,7 @@ class QueryHandlers:
     """Handlers for query-related CLI commands."""
 
     def __init__(self):
+        """Initialize the QueryHandlers with required services."""
         self.ledger_service = LedgerService()
         self.project_service = ProjectService()
 
@@ -168,3 +169,6 @@ class QueryHandlers:
 
         except Exception as e:
             handle_error(e, "blockers listing", {"project": project})
+
+
+__all__ = ["QueryHandlers"]

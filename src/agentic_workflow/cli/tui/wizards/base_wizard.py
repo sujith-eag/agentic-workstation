@@ -20,6 +20,7 @@ class BaseWizard(ABC):
     """Base class for wizard workflows."""
 
     def __init__(self, app):
+        """Initialize the base wizard with application context."""
         self.app = app
         self.console = console
 

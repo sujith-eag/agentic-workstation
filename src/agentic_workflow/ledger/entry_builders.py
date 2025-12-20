@@ -7,6 +7,19 @@ Generates properly formatted markdown entries with markers for:
 """
 import datetime
 from datetime import timezone
+from typing import Optional, List, Dict, Any, Tuple
+
+__all__ = [
+    "get_timestamp",
+    "build_handoff_entry",
+    "build_feedback_entry", 
+    "build_iteration_entry",
+    "build_session_entry",
+    "build_decision_entry",
+    "build_assumption_entry",
+    "build_blocker_entry",
+    "build_task_entry"
+]
 
 
 def get_timestamp() -> str:
@@ -15,8 +28,8 @@ def get_timestamp() -> str:
 
 
 def build_handoff_entry(entry_id: str, from_agent: str, to_agent: str, 
-                        artifacts: list = None, notes: str = None,
-                        status: str = "pending") -> tuple[str, dict]:
+                        artifacts: Optional[List[str]] = None, notes: Optional[str] = None,
+                        status: str = "pending") -> Tuple[str, Dict[str, Any]]:
     """Build a handoff entry for exchange_log.
     
     Returns:
@@ -59,7 +72,7 @@ def build_handoff_entry(entry_id: str, from_agent: str, to_agent: str,
 
 def build_feedback_entry(entry_id: str, reporter: str, target: str,
                          severity: str, summary: str,
-                         status: str = "open") -> tuple[str, dict]:
+                         status: str = "open") -> Tuple[str, Dict[str, Any]]:
     """Build a feedback entry for exchange_log.
     
     Returns:
@@ -109,8 +122,8 @@ def build_feedback_entry(entry_id: str, reporter: str, target: str,
     return md, yaml_entry
 
 
-def build_iteration_entry(entry_id: str, trigger: str, impacted_agents: list,
-                          version_bump: str = None, description: str = None) -> tuple[str, dict]:
+def build_iteration_entry(entry_id: str, trigger: str, impacted_agents: Optional[List[str]],
+                          version_bump: Optional[str] = None, description: Optional[str] = None) -> Tuple[str, Dict[str, Any]]:
     """Build an iteration entry for exchange_log.
     
     Returns:
@@ -144,8 +157,8 @@ def build_iteration_entry(entry_id: str, trigger: str, impacted_agents: list,
 
 
 def build_session_entry(entry_id: str, agent_id: str, agent_role: str,
-                        status: str = "active", summary: str = None,
-                        artifacts: list = None) -> tuple[str, dict]:
+                        status: str = "active", summary: Optional[str] = None,
+                        artifacts: Optional[List[str]] = None) -> Tuple[str, Dict[str, Any]]:
     """Build a session entry for context_log.
     
     Returns:
@@ -194,8 +207,8 @@ def build_session_entry(entry_id: str, agent_id: str, agent_role: str,
 
 
 def build_decision_entry(entry_id: str, agent: str, title: str,
-                         rationale: str, impacts: str = None,
-                         scope: str = "global") -> tuple[str, dict]:
+                         rationale: str, impacts: Optional[str] = None,
+                         scope: str = "global") -> Tuple[str, Dict[str, Any]]:
     """Build a decision entry for context_log or agent context.
     
     Returns:
@@ -234,8 +247,8 @@ def build_decision_entry(entry_id: str, agent: str, title: str,
 
 
 def build_assumption_entry(entry_id: str, agent: str, assumption: str,
-                           rationale: str = None, reversal_condition: str = None,
-                           status: str = "active") -> tuple[str, dict]:
+                           rationale: Optional[str] = None, reversal_condition: Optional[str] = None,
+                           status: str = "active") -> Tuple[str, Dict[str, Any]]:
     """Build an assumption entry for context_log or agent context.
     
     Returns:
@@ -280,9 +293,9 @@ def build_assumption_entry(entry_id: str, agent: str, assumption: str,
 
 
 def build_blocker_entry(entry_id: str, reporter: str, title: str,
-                        description: str, blocked_agents: list = None,
-                        required_action: str = None,
-                        status: str = "pending") -> tuple[str, dict]:
+                        description: str, blocked_agents: Optional[List[str]] = None,
+                        required_action: Optional[str] = None,
+                        status: str = "pending") -> Tuple[str, Dict[str, Any]]:
     """Build a blocker entry for context_log.
     
     Returns:
@@ -331,7 +344,7 @@ def build_blocker_entry(entry_id: str, reporter: str, title: str,
 
 
 def build_task_entry(entry_id: str, title: str, status: str = "active",
-                     output: str = None, notes: str = None) -> tuple[str, dict]:
+                     output: Optional[str] = None, notes: Optional[str] = None) -> Tuple[str, Dict[str, Any]]:
     """Build a task entry for agent context.
     
     Returns:

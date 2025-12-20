@@ -4,6 +4,17 @@ High-level API for writing entries to exchange_log and context_log.
 Auto-generates IDs and manages both MD and YAML files.
 """
 from pathlib import Path
+from typing import Optional, List
+
+__all__ = [
+    "write_handoff",
+    "write_feedback", 
+    "write_iteration",
+    "write_session",
+    "write_decision",
+    "write_assumption",
+    "write_blocker"
+]
 
 from agentic_workflow.ledger.id_generator import generate_entry_id
 from agentic_workflow.ledger.section_ops import (
@@ -39,7 +50,7 @@ def _get_log_paths(project_dir: Path, log_type: str):
 
 
 def write_handoff(project_name: str, from_agent: str, to_agent: str,
-                  artifacts: list = None, notes: str = None,
+                  artifacts: Optional[List[str]] = None, notes: Optional[str] = None,
                   status: str = "pending") -> tuple[str, str]:
     """Write a handoff entry to exchange_log.
     
@@ -103,8 +114,8 @@ def write_feedback(project_name: str, reporter: str, target: str,
     return entry_id, str(md_path)
 
 
-def write_iteration(project_name: str, trigger: str, impacted_agents: list,
-                    version_bump: str = None, description: str = None) -> tuple[str, str]:
+def write_iteration(project_name: str, trigger: str, impacted_agents: Optional[List[str]],
+                    version_bump: Optional[str] = None, description: Optional[str] = None) -> tuple[str, str]:
     """Write an iteration entry to exchange_log.
     
     Returns:
@@ -133,8 +144,8 @@ def write_iteration(project_name: str, trigger: str, impacted_agents: list,
 
 
 def write_session(project_name: str, agent_id: str, agent_role: str,
-                  status: str = "active", summary: str = None,
-                  artifacts: list = None) -> tuple[str, str]:
+                  status: str = "active", summary: Optional[str] = None,
+                  artifacts: Optional[List[str]] = None) -> tuple[str, str]:
     """Write a session entry to context_log.
     
     Returns:
@@ -163,7 +174,7 @@ def write_session(project_name: str, agent_id: str, agent_role: str,
 
 
 def write_decision(project_name: str, agent: str, title: str,
-                   rationale: str, impacts: str = None,
+                   rationale: str, impacts: Optional[str] = None,
                    scope: str = "global") -> tuple[str, str]:
     """Write a decision entry to context_log.
     
@@ -193,7 +204,7 @@ def write_decision(project_name: str, agent: str, title: str,
 
 
 def write_assumption(project_name: str, agent: str, assumption: str,
-                     rationale: str = None, reversal_condition: str = None,
+                     rationale: Optional[str] = None, reversal_condition: Optional[str] = None,
                      status: str = "active") -> tuple[str, str]:
     """Write an assumption entry to context_log.
     
@@ -223,8 +234,8 @@ def write_assumption(project_name: str, agent: str, assumption: str,
 
 
 def write_blocker(project_name: str, reporter: str, title: str,
-                  description: str, blocked_agents: list = None,
-                  required_action: str = None,
+                  description: str, blocked_agents: Optional[List[str]] = None,
+                  required_action: Optional[str] = None,
                   status: str = "pending") -> tuple[str, str]:
     """Write a blocker entry to context_log.
     

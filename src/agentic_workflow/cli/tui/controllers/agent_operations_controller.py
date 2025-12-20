@@ -210,3 +210,6 @@ class AgentOperationsController(BaseController):
             return
 
         questionary.press_any_key_to_continue().ask()
+
+
+__all__ = ["AgentOperationsController"]

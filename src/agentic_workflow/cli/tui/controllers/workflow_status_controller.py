@@ -28,3 +28,6 @@ class WorkflowStatusController(BaseController):
 
         import questionary
         questionary.press_any_key_to_continue().ask()
+
+
+__all__ = ["WorkflowStatusController"]

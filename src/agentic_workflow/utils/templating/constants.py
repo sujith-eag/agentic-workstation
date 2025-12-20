@@ -15,3 +15,5 @@ except Exception:
     TEMPLATES_DIR = get_package_root() / "templates"
 
 WORKFLOWS_DIR = get_package_root() / "manifests" / "workflows"
+
+__all__ = ["DEFAULT_AGENT_TEMPLATE", "DEFAULT_SESSION_TEMPLATE", "TEMPLATES_DIR", "WORKFLOWS_DIR"]

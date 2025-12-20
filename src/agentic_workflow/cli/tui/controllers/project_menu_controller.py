@@ -141,3 +141,6 @@ class ProjectMenuController(BaseController):
             return "global"  # Signal context change
         
         return "project"  # Stay in project context
+
+
+__all__ = ["ProjectMenuController"]

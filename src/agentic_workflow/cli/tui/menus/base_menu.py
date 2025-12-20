@@ -21,6 +21,7 @@ class BaseMenu(ABC):
     """Base class for menu controllers."""
 
     def __init__(self, app):
+        """Initialize the base menu with application context."""
         self.app = app
         self.console = console
 

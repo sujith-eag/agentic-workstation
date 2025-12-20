@@ -24,6 +24,7 @@ class SessionHandlers:
     """Handlers for session lifecycle management."""
 
     def __init__(self, config=None):
+        """Initialize the SessionHandlers with optional config."""
         self.config = config
         self.project_service = ProjectService(config)
         self.workflow_service = WorkflowService()
@@ -159,3 +160,6 @@ class SessionHandlers:
 
         except Exception as e:
             handle_error(e, "session end", {"project": project})
+
+
+__all__ = ["SessionHandlers"]

@@ -21,3 +21,6 @@ class ArtifactManagementController(BaseController):
         display_info("")
 
         self.app.artifact_ops.execute_artifact_management(self.app.project_root)
+
+
+__all__ = ["ArtifactManagementController"]

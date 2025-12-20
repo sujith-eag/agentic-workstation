@@ -13,13 +13,17 @@ from agentic_workflow.cli.utils import display_error, display_success
 
 from agentic_workflow.cli.utils import display_error, display_success, display_info
 
+__all__ = ["validate_init", "validate_activate", "validate_populate", "validate_end", "validate_update_index", "validate_check_handoff"]
+
 
 def fail(msg):
+    """Exit with error message."""
     display_error(f"ERROR: {msg}")
     sys.exit(1)
 
 
 def check_project_exists(proj):
+    """Check if project directory exists."""
     from agentic_workflow.core.project import get_project_dir
     p = Path(get_project_dir(proj))
     if not p.exists():
@@ -28,6 +32,7 @@ def check_project_exists(proj):
 
 
 def validate_init(args):
+    """Validate project initialization."""
     from agentic_workflow.core.project import get_project_dir
     p = Path(get_project_dir(args.project))
     if not p.exists():
@@ -40,6 +45,7 @@ def validate_init(args):
 
 
 def validate_activate(args):
+    """Validate agent activation."""
     p = check_project_exists(args.project)
     active = p / "agent_context" / "active_session.md"
     if not active.exists():
@@ -48,6 +54,7 @@ def validate_activate(args):
 
 
 def validate_populate(args):
+    """Validate agent file population."""
     from agentic_workflow.core.paths import get_agent_files_dir
     af = Path(get_agent_files_dir())
     if not af.exists() or not any(af.glob("A*_*")):
@@ -56,6 +63,7 @@ def validate_populate(args):
 
 
 def validate_end(args):
+    """Validate session end."""
     p = check_project_exists(args.project)
     ctx = p / "agent_log" / "context_log.md"
     if not ctx.exists():
@@ -64,6 +72,7 @@ def validate_end(args):
 
 
 def validate_update_index(args):
+    """Validate index update."""
     if not args.artifact:
         fail("--artifact required for update-index validation")
     a = Path(args.artifact)
@@ -73,6 +82,7 @@ def validate_update_index(args):
 
 
 def validate_check_handoff(args):
+    """Validate handoff check."""
     p = check_project_exists(args.project)
     ledger = p / "agent_log" / "exchange_log.yaml"
     if not ledger.exists():
@@ -91,6 +101,7 @@ def validate_check_handoff(args):
 
 
 def main():
+    """Main entry point for session validation CLI."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", required=True)
     parser.add_argument("--action", required=True)

@@ -29,6 +29,8 @@ from .canonical_loader import (
     extract_files_from_produces_consumes,
 )
 
+__all__ = ["Denormalizer", "denormalize_canonical"]
+
 
 class Denormalizer:
     """Denormalizes canonical workflow data for human-readable output."""
