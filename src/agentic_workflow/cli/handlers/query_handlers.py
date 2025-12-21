@@ -6,15 +6,24 @@ Extracted from the monolithic workflow.py for better maintainability.
 
 Design Decision: Handlers accept keyword arguments directly instead of argparse.Namespace.
 This allows the handlers to be used both from CLI (via Click) and programmatically (from services).
+Focus: Read-only status and state queries.
 """
 
-from typing import Optional, List
+from typing import Optional, List, TypedDict
+from typing import Literal
 import logging
 from pathlib import Path
 
-from agentic_workflow.core.exceptions import CLIExecutionError, handle_error, validate_required
+from agentic_workflow.core.exceptions import handle_error, validate_required
 from agentic_workflow.services import LedgerService, ProjectService
-from ..utils import display_action_result, display_info, display_status_panel, display_warning
+from ..utils import (
+    display_action_result,
+    display_error,
+    display_info,
+    display_status_panel,
+    display_warning,
+    shorten_path,
+)
 from ..ui_utils import format_output
 
 logger = logging.getLogger(__name__)
@@ -22,20 +31,17 @@ logger = logging.getLogger(__name__)
 __all__ = ["QueryHandlers"]
 
 
-"""
-Query command handlers for Agentic Workflow CLI.
-Focus: Read-only status and state queries.
-"""
+class InventoryEntry(TypedDict):
+    """Describe a single project root entry for UI inventory rendering."""
+    name: str
+    type: Literal["dir", "file"]
+    count: int
 
-from typing import Optional
-import logging
-from pathlib import Path
 
-from agentic_workflow.core.exceptions import CLIExecutionError, handle_error, validate_required
-from agentic_workflow.services import LedgerService, ProjectService
-from ..utils import display_action_result, display_info, display_status_panel, display_error, shorten_path
+class ProjectInventory(TypedDict):
+    """Collection of project root entries formatted for UI consumption."""
+    entries: List[InventoryEntry]
 
-logger = logging.getLogger(__name__)
 
 class QueryHandlers:
     """Handlers for query-related CLI commands."""
@@ -44,6 +50,54 @@ class QueryHandlers:
         """Initialize the QueryHandlers with required services."""
         self.ledger_service = LedgerService()
         self.project_service = ProjectService()
+
+    # --- TUI-friendly helpers (data only, no display) ---
+    def get_active_session(self, project: str) -> dict:
+        """Return active session data for a project without rendering."""
+        return self.ledger_service.get_active_session(project) or {}
+
+    def get_dashboard_data(self, project: str) -> dict:
+        """Collect dashboard-ready data (status, session, activity)."""
+        status_result = {}
+        session_context = {"active_agent": None, "last_action": "No recent activity"}
+        recent_activity = []
+
+        status_data = self.project_service.get_project_status(project)
+        if status_data.get("status") == "found":
+            status_result = status_data.get("config", {})
+
+        session_data = self.ledger_service.get_active_session(project) or {}
+        session_context = {
+            "active_agent": session_data.get("agent_id"),
+            "last_action": session_data.get("last_action", "No recent activity"),
+        }
+
+        recent_activity = self.ledger_service.get_recent_activity(project, limit=5) or []
+
+        return {
+            "status": status_result,
+            "session_context": session_context,
+            "recent_activity": recent_activity,
+        }
+
+    def get_project_inventory(self, project_path: Path, include_hidden: bool = False) -> ProjectInventory:
+        """Return project root inventory for UI rendering with dirs first and counts included."""
+        entries: List[InventoryEntry] = []
+        if not project_path or not Path(project_path).exists():
+            return {"entries": entries}
+
+        for item in Path(project_path).iterdir():
+            if not include_hidden and item.name.startswith('.'):
+                continue
+
+            if item.is_dir():
+                count = sum(1 for _ in item.rglob('*'))
+                entries.append({"name": f"{item.name}/", "type": "dir", "count": count})
+            else:
+                entries.append({"name": item.name, "type": "file", "count": 0})
+
+        entries.sort(key=lambda e: (0 if e["type"] == "dir" else 1, e["name"].lower()))
+        return {"entries": entries}
 
     def handle_status(
         self,

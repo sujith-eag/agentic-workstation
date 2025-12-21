@@ -4,15 +4,12 @@ Project menu controller for TUI.
 This module contains the controller for project context menu operations.
 """
 
-import questionary
-from rich.console import Console
-from rich.panel import Panel
+from questionary import Choice
 
 from .base_controller import BaseController
-from ...utils import display_info, display_error
+from ...ui_utils import get_agentic_ascii_art
+from ..ui import InputResult
 from ..views import DashboardView
-
-console = Console()
 
 
 class ProjectMenuController(BaseController):
@@ -20,40 +17,24 @@ class ProjectMenuController(BaseController):
 
     def execute(self, *args, **kwargs) -> str:
         """Execute the project menu and return the selected action."""
-        console.clear()
+        # Display AGENTIC ASCII art centered with tighter spacing
+        self.console.print(get_agentic_ascii_art(), style=self.theme.ASCII_ART, justify="left")
 
         project_name = self.app.project_root.name if self.app.project_root else "Unknown"
 
-        # Fetch latest status and session data from services (stateless approach)
+        # Fetch latest status and session data via handlers
         try:
-            # Get status from ProjectService
-            from agentic_workflow.services import ProjectService, LedgerService
-            project_service = ProjectService()
-            ledger_service = LedgerService()
-            
-            status_result = {}
-            status_data = project_service.get_project_status(project_name)
-            if status_data.get('status') == 'found':
-                status_result = status_data.get('config', {})
-            
-            # Get fresh session data from LedgerService
-            session_data = ledger_service.get_active_session(project_name) or {}
-            session_context = {
-                'active_agent': session_data.get('agent_id'),
-                'last_action': session_data.get('last_action', 'No recent activity')
-            }
-            
-            # Get recent activity
-            recent_activity = ledger_service.get_recent_activity(project_name, limit=5)
-            
+            dashboard_data = self.app.query_handlers.get_dashboard_data(project_name)
+            status_result = dashboard_data.get('status', {})
+            session_context = dashboard_data.get('session_context', {'active_agent': None, 'last_action': 'No recent activity'})
+            recent_activity = dashboard_data.get('recent_activity', [])
         except Exception:
-            # If data fetch fails, use empty defaults
             status_result = {}
             session_context = {'active_agent': None, 'last_action': 'No recent activity'}
             recent_activity = []
 
         # Render dashboard with fresh data
-        dashboard = DashboardView()
+        dashboard = DashboardView(console=self.console, theme_map=self.theme.dashboard_theme())
         dashboard.render(
             project_name=project_name,
             session_context=session_context,
@@ -61,22 +42,18 @@ class ProjectMenuController(BaseController):
             recent_activity=recent_activity
         )
 
-        display_info("")
-
         # Menu options
-        choice = questionary.select(
-            "Select an option:",
+        choice = self.input_handler.get_selection(
             choices=[
-                {"name": "View Workflow Status", "value": "status"},
-                {"name": "Agent Operations", "value": "agents"},
-                {"name": "List Pending Handoffs", "value": "list-pending"},
-                {"name": "List Active Blockers", "value": "list-blockers"},
-                {"name": "Artifact Management", "value": "artifacts"},
-                {"name": "Project Navigation", "value": "navigate"},
-                {"name": "Return to Global Mode", "value": "exit"}
+                Choice(title="View Workflow Status", value="status"),
+                Choice(title="Agent Operations", value="agents"),
+                Choice(title="List Pending Handoffs", value="list-pending"),
+                Choice(title="List Active Blockers", value="list-blockers"),
+                Choice(title="Artifact Management", value="artifacts"),
+                Choice(title="Project Navigation", value="navigate")
             ],
-            use_shortcuts=True
-        ).ask()
+            message="Select an option:"
+        )
 
         return choice
 
@@ -98,7 +75,7 @@ class ProjectMenuController(BaseController):
         except Exception as e:
             self.app.error_view.display_error_modal(str(e))
         
-        questionary.press_any_key_to_continue().ask()
+        self.input_handler.wait_for_user()
 
     def execute_list_blockers(self) -> None:
         """Execute list active blockers."""
@@ -110,7 +87,11 @@ class ProjectMenuController(BaseController):
         except Exception as e:
             self.app.error_view.display_error_modal(str(e))
         
-        questionary.press_any_key_to_continue().ask()
+        self.input_handler.wait_for_user()
+
+    def execute_artifact_management(self) -> None:
+        """Execute artifact management."""
+        self.app.artifact_management_controller.execute()
 
     def execute_project_navigation(self) -> None:
         """Execute project navigation display."""
@@ -118,14 +99,16 @@ class ProjectMenuController(BaseController):
         if hasattr(self.app, 'project_navigation_controller'):
             self.app.project_navigation_controller.execute()
         else:
-            display_error("Navigation controller not initialized.")
-            questionary.press_any_key_to_continue().ask()
+            self.feedback.error("Navigation controller not initialized.")
+            self.input_handler.wait_for_user()
 
     def run_menu(self) -> str:
         """Run the complete project menu loop and return context change."""
         choice = self.execute()
 
-        if choice == "status":
+        if choice is None or choice == InputResult.EXIT:
+            return "global"  # Exit project context on cancel/ctrl+C
+        elif choice == "status":
             self.execute_workflow_status()
         elif choice == "agents":
             self.execute_agent_operations()
@@ -137,9 +120,7 @@ class ProjectMenuController(BaseController):
             self.execute_artifact_management()
         elif choice == "navigate":
             self.execute_project_navigation()
-        elif choice == "exit":
-            return "global"  # Signal context change
-        
+
         return "project"  # Stay in project context
 
 

@@ -12,7 +12,7 @@ Layers: defaults, user-global, project-local, workflow definition, runtime flags
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Optional, TypedDict
+from typing import Dict, Optional, TypedDict, Any
 import yaml
 import platformdirs
 try:
@@ -45,21 +45,33 @@ class ConfigurationService:
     definitions, and runtime flags into a single `RuntimeConfig` instance.
     """
 
-    def __init__(self) -> None:
-        """Initialize the ConfigurationService."""
+    def __init__(self, console: Any = None, input_handler: Any = None, feedback: Any = None, layout: Any = None) -> None:
+        """Initialize the ConfigurationService with optional TUI dependencies."""
+        self.console = console
+        self.input_handler = input_handler
+        self.feedback = feedback
+        self.layout = layout
         self.global_config_path = self._get_global_config_path()
+
+    def _get_user_config_dir(self) -> Path:
+        """Return the user config directory path."""
+        return Path(platformdirs.user_config_dir("agentic", "agentic"))
 
     def _get_global_config_path(self) -> Path:
         """Return the global config file path under the user's config directory."""
-        config_dir = Path(platformdirs.user_config_dir("agentic", "agentic"))
+        config_dir = self._get_user_config_dir()
         return config_dir / "config.yaml"
 
-    def ensure_system_configured(self) -> None:
+    def ensure_system_configured(self, console: Any = None, input_handler: Any = None, feedback: Any = None, layout: Any = None) -> None:
         """Ensure Layer 2 (global) config exists, running setup if interactive."""
         if not self.global_config_path.exists():
             if sys.stdin.isatty() and sys.stdout.isatty():
                 from ..cli.tui.setup import run_setup_wizard
-                run_setup_wizard()
+                run_setup_wizard(
+                    console_override=console or self.console,
+                    input_handler=input_handler or self.input_handler,
+                    feedback=feedback or self.feedback,
+                )
             else:
                 # Headless fallback: create default config
                 self._create_default_config()
@@ -74,13 +86,22 @@ class ConfigurationService:
         except Exception as e:
             raise ConfigError(f"Failed to create default config: {e}")
 
-    def load_config(self, context_path: Optional[Path] = None, verbose: bool = False, force: bool = False) -> RuntimeConfig:
+    def load_config(
+        self,
+        context_path: Optional[Path] = None,
+        verbose: bool = False,
+        force: bool = False,
+        console: Any = None,
+        input_handler: Any = None,
+        feedback: Any = None,
+        layout: Any = None,
+    ) -> RuntimeConfig:
         """Load and return the merged `RuntimeConfig` assembled from all layers."""
-        self.ensure_system_configured()
+        self.ensure_system_configured(console=console, input_handler=input_handler, feedback=feedback, layout=layout)
 
         config = RuntimeConfig(verbose=verbose, force=force)
 
-        # Layer 1: Defaults (already set in RuntimeConfig)
+        # Layer 1: Defaults already provided by RuntimeConfig
 
         # Layer 2: User Global
         if self.global_config_path.exists():
@@ -133,10 +154,23 @@ class ConfigurationService:
         """Deep-merge two raw configuration mappings and return the merged mapping.
 
         This performs a recursive merge where nested mappings are merged
-        rather than overwritten.
+        rather than overwritten. Overlay values that are `None` or empty
+        strings are ignored so they do not clobber existing settings.
         """
-        result: RawConfig = base.copy()
+        def is_empty(val: Any) -> bool:
+            return val is None or (isinstance(val, str) and val == "")
+
+        # Start with base, dropping empty values so they don't linger.
+        result: RawConfig = {
+            key: value
+            for key, value in base.items()
+            if not is_empty(value)
+        }
+
         for key, value in overlay.items():
+            if is_empty(value):
+                # Skip empty overlay values; they should not override prior settings.
+                continue
             if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 # Type ignore: recursive TypedDict mapping merging at runtime
                 result[key] = self.deep_merge(result[key], value)  # type: ignore[arg-type]

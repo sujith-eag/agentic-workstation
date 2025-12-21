@@ -15,6 +15,7 @@ Architecture:
 
 from .global_handlers import GlobalHandlers
 from .project_handlers import ProjectHandlers
+from .artifact_handlers import ArtifactHandlers
 from .session_handlers import SessionHandlers
 from .query_handlers import QueryHandlers
 from .entry_handlers import EntryHandlers
@@ -23,6 +24,7 @@ from .workflow_handlers import WorkflowHandlers
 __all__ = [
     "GlobalHandlers",
     "ProjectHandlers",
+    "ArtifactHandlers",
     "SessionHandlers",
     "QueryHandlers",
     "EntryHandlers",

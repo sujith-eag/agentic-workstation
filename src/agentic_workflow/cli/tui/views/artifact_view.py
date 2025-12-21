@@ -21,12 +21,17 @@ class ArtifactListView(BaseView):
     def render(self, artifacts: List[Tuple[Path, str]]) -> None:
         """Render the artifact list."""
         if not artifacts:
-            self.console.print("[yellow]No artifacts found.[/yellow]")
+            warning_style = self.theme_map.get("warning.text", "yellow")
+            self.console.print(f"[{warning_style}]No artifacts found.[/{warning_style}]")
             return
 
-        table = Table(title="📁 Project Artifacts")
-        table.add_column("File", style="cyan", no_wrap=True)
-        table.add_column("Size", style="green", justify="right")
+        table = Table(
+            title="Artifacts",
+            title_style=self.theme_map.get("table.title", "bold blue"),
+            border_style=self.theme_map.get("table.border", "blue"),
+        )
+        table.add_column("File", style=self.theme_map.get("primary", "cyan"), no_wrap=True)
+        table.add_column("Size", style=self.theme_map.get("success", "green"), justify="right")
 
         for full_path, relative_path in artifacts:
             try:
@@ -62,13 +67,18 @@ class ArtifactContentView(BaseView):
         lexer = lexer_map.get(suffix, 'text')
 
         # Create syntax-highlighted content
-        syntax = Syntax(content, lexer, theme="monokai", line_numbers=True)
+        syntax = Syntax(
+            content,
+            lexer,
+            theme=self.theme_map.get("syntax.theme", "monokai"),
+            line_numbers=True,
+        )
 
         # Create panel with file info
         panel = Panel(
             syntax,
             title=f"📄 {relative_path}",
-            border_style="blue",
+            border_style=self.theme_map.get("table.border", self.theme_map.get("border", "blue")),
             padding=(1, 2)
         )
 

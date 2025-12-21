@@ -4,10 +4,10 @@ Management controllers for TUI.
 This module contains controllers for management operations.
 """
 
-import questionary
+from questionary import Choice
 
 from .base_controller import BaseController
-from ...utils import display_error, display_info, display_success, display_warning
+from ..ui import InputResult
 
 
 class ProjectManagementController(BaseController):
@@ -15,25 +15,15 @@ class ProjectManagementController(BaseController):
 
     def execute(self, *args, **kwargs) -> None:
         """Execute project management menu."""
-        display_info("Project Management")
-        display_info("")
+        self.feedback.info("Project Management")
 
         # Get list of projects for selection
         try:
-            # Use ProjectHandlers for listing projects
-            from ...handlers import ProjectHandlers
-            project_handlers = ProjectHandlers()
-            
-            # Get project data from handlers (same as list_projects)
-            # We need to call the service method directly since handle_list displays output
-            from agentic_workflow.services import ProjectService
-            project_service = ProjectService()
-            result = project_service.list_projects()
-            projects = result['projects']
+            projects_data = self.app.project_handlers.list_projects_data()
+            projects = projects_data.get('projects', [])
 
             if not projects:
-                display_warning("No projects found to manage.")
-                questionary.press_any_key_to_continue().ask()
+                self.feedback.warning("No projects found to manage.")
                 return
 
             # Project selection with descriptions
@@ -44,66 +34,68 @@ class ProjectManagementController(BaseController):
                 choice_text = f"{project['name']} ({workflow})"
                 if desc:
                     choice_text += f" - {desc}"
-                project_choices.append(choice_text)
+                project_choices.append(Choice(title=choice_text, value=project['name']))
 
-            selected_choice = questionary.select(
-                "Select project to manage:",
-                choices=project_choices
-            ).ask()
+            selected_project = self.input_handler.get_selection(
+                choices=project_choices,
+                message="Select project to manage:"
+            )
 
-            # Extract project name from selection
-            project_name = selected_choice.split(' (')[0]
-
-            # Management actions
-            action = questionary.select(
-                f"Select action for '{project_name}':",
-                choices=[
-                    {"name": "View Project Status", "value": "status"},
-                    {"name": "Remove Project", "value": "remove"},
-                    {"name": "Cancel", "value": "cancel"}
-                ]
-            ).ask()
-
-            if action == "status":
-                self._show_project_status(project_name, project_service)
-            elif action == "remove":
-                self._remove_project(project_name)
-            elif action == "cancel":
+            if selected_project is None or selected_project == InputResult.EXIT:
                 return
 
+            # Management actions
+            action = self.input_handler.get_selection(
+                choices=[
+                    Choice(title="View Project Status", value="status"),
+                    Choice(title="Remove Project", value="remove")
+                ],
+                message=f"Select action for '{selected_project}':"
+            )
+
+            if action is None or action == InputResult.EXIT:
+                return
+
+            if action == "status":
+                self._show_project_status(selected_project)
+            elif action == "remove":
+                self._remove_project(selected_project)
+
         except Exception as e:
-            display_error(f"Project management error: {e}")
+            self.feedback.error(f"Project management error: {e}")
 
-        questionary.press_any_key_to_continue().ask()
-
-    def _show_project_status(self, project_name: str, project_service) -> None:
+    def _show_project_status(self, project_name: str) -> None:
         """Show status for a specific project."""
         try:
-            # Get project status directly using the project service
-            result = project_service.get_project_status(project_name)
+            result = self.app.project_handlers.get_project_status_data(project_name)
 
             # Use the new view to render the project status
             from ..views import ProjectStatusView
-            view = ProjectStatusView()
+            view = ProjectStatusView(console=self.console, theme_map=self.theme.get_color_map())
             view.render(result)
+            self.input_handler.wait_for_user()
 
         except Exception as e:
-            display_error(f"Failed to get project status: {e}")
+            self.feedback.error(f"Failed to get project status: {e}")
 
     def _remove_project(self, project_name: str) -> None:
         """Remove a project."""
-        confirm = questionary.confirm(
+        confirm = self.input_handler.get_confirmation(
             f"Are you sure you want to remove project '{project_name}'? This action cannot be undone.",
             default=False
-        ).ask()
+        )
+
+        if confirm == InputResult.EXIT:
+            return
 
         if confirm:
             try:
                 self.app.project_handlers.handle_delete(project=project_name, force=False)
-                display_success(f"Project '{project_name}' removed successfully!")
+                self.feedback.success(f"Project '{project_name}' removed successfully!")
+                self.input_handler.wait_for_user()
             except Exception as e:
-                display_error(f"Failed to remove project: {e}")
+                self.feedback.error(f"Failed to remove project: {e}")
         else:
-            display_info("Project removal cancelled.")
+            self.feedback.info("Project removal cancelled.")
             
 __all__ = ["ProjectManagementController"]

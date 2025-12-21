@@ -7,31 +7,19 @@ and session context in a cockpit-style interface.
 
 from typing import Dict, Any, List
 from datetime import datetime
-from rich.layout import Layout
 from rich.panel import Panel
 from rich.text import Text
 from rich.table import Table
-from rich.style import Style
+from rich.columns import Columns
 
 from .base_views import BaseView
 
 class DashboardView(BaseView):
     """Dashboard view for project cockpit interface."""
 
-    # SEMANTIC STYLES (Centralized Theming)
-    THEME = {
-        "project.border": "blue",
-        "project.title": "bold blue",
-        "project.key": "cyan",
-        "session.border": "green",
-        "session.title": "bold green",
-        "session.key": "green",
-        "activity.border": "magenta",
-        "activity.title": "bold magenta",
-        "activity.header": "bold magenta",
-        "text.value": "yellow",
-        "text.dim": "dim",
-    }
+    def __init__(self, console, theme_map: dict):
+        super().__init__(console, theme_map=theme_map)
+        self.theme_map = theme_map
 
     def render(self, 
                project_name: str, 
@@ -40,18 +28,7 @@ class DashboardView(BaseView):
                recent_activity: List[Dict[str, Any]] = None) -> None:
         """Render the dashboard with project info, session context, status, and recent activity."""
         
-        # 1. Main Layout Structure
-        layout = Layout()
-        layout.split_column(
-            Layout(name="top", ratio=1),
-            Layout(name="bottom", ratio=1)
-        )
-        layout["top"].split_row(
-            Layout(name="left_panel", ratio=1),
-            Layout(name="right_panel", ratio=1)
-        )
-
-        # 2. Data Preparation (Normalization)
+        # 1. Data Preparation (Normalization)
         project_data = {
             "Project": project_name,
             "Workflow": status.get('workflow') or 'Not set',
@@ -64,20 +41,21 @@ class DashboardView(BaseView):
             "Last Action": session_context.get('last_action') or 'No recent activity'
         }
 
-        # 3. Component Rendering (Using Helper)
-        layout["top"]["left_panel"].update(
-            self._create_info_panel("Project Information", project_data, "project")
+        # 2. Component Rendering (compact columns + stacked activity)
+        top_columns = Columns(
+            [
+                self._create_info_panel("Project Information", project_data, "project"),
+                self._create_info_panel("Session Status", session_data, "session")
+            ],
+            expand=True,
+            equal=True,
+            padding=(0, 1)
         )
 
-        layout["top"]["right_panel"].update(
-            self._create_info_panel("Session Status", session_data, "session")
-        )
+        activity_panel = self._create_activity_panel(recent_activity or [])
 
-        layout["bottom"].update(
-            self._create_activity_panel(recent_activity or [])
-        )
-
-        self.console.print(layout)
+        self.console.print(top_columns)
+        self.console.print(activity_panel)
 
     def _create_info_panel(self, title: str, data: Dict[str, str], theme_prefix: str) -> Panel:
         """
@@ -92,28 +70,28 @@ class DashboardView(BaseView):
         
         for key, value in data.items():
             # Apply semantic styling
-            key_style = self.THEME.get(f"{theme_prefix}.key", "bold")
-            val_style = self.THEME.get("text.value", "default")
+            key_style = self.theme_map.get(f"{theme_prefix}.key", "bold")
+            val_style = self.theme_map.get("text.value", "default")
             
             # Special handling for description/long text to be dim
             if key in ["Description", "Last Action"]:
-                val_style = self.THEME.get("text.dim", "dim")
+                val_style = self.theme_map.get("text.dim", "dim")
 
             content.append(f"{key}: ", style=key_style)
             content.append(f"{value}\n", style=val_style)
 
         return Panel(
             content,
-            title=f"[{self.THEME[f'{theme_prefix}.title']}]{title}[/]",
-            border_style=self.THEME[f'{theme_prefix}.border'],
-            padding=(1, 2)
+            title=title,
+            border_style=self.theme_map.get(f'{theme_prefix}.border', 'blue'),
+            padding=(0, 1)
         )
 
     def _create_activity_panel(self, activity: List[Dict[str, Any]]) -> Panel:
         """Create the recent activity panel with robust formatting."""
         table = Table(
             show_header=True, 
-            header_style=self.THEME["activity.header"],
+            header_style=self.theme_map.get("activity.header", "bold"),
             expand=True  # Ensure table fills the panel
         )
         
@@ -135,9 +113,9 @@ class DashboardView(BaseView):
 
         return Panel(
             table,
-            title=f"[{self.THEME['activity.title']}]Recent Activity[/]",
-            border_style=self.THEME["activity.border"],
-            padding=(1, 2)
+            title="Recent Activity",
+            border_style=self.theme_map.get("activity.border", "blue"),
+            padding=(0, 1)
         )
 
     def _format_timestamp(self, ts_str: str) -> str:

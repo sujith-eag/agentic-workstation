@@ -1,6 +1,6 @@
 # Agentic Workflow OS CLI & TUI Reference
 
-**Version:** 1.0.8
+**Version:** 1.0.9
 **Generated:** December 15, 2025
 **Source:** Code Review Analysis & CLI Implementation
 
@@ -47,7 +47,7 @@ Available when **inside** project directories for workflow operations.
 | `handoff` | None | `--to`, `--artifacts`, `--from` | Record agent handoff with artifacts (from agent inferred from active session) |
 | `decision` | None | `--title`, `--rationale` | Record project decision |
 | `end` | None | None | End current workflow session |
-| `feedback` | None | `--content`, `--target` | Record feedback for an agent or artifact |
+| `feedback` | None | `--target`, `--severity`, `--summary` | Record feedback for an agent or artifact |
 | `blocker` | None | `--title`, `--description`, `--blocked-agents` | Record a blocker that prevents progress |
 | `iteration` | None | `--trigger`, `--impacted-agents`, `--description` | Record an iteration in the development process |
 | `assumption` | None | `--assumption`, `--rationale` | Record an assumption that may affect the project |
@@ -99,7 +99,7 @@ agentic handoff --to A-02 --artifacts "requirements.md,architecture.md"
 agentic decision --title "Technology Stack Selection" --rationale "React + Node.js chosen"
 
 # Record feedback
-agentic feedback --content "Good work on requirements" --target "A-02"
+agentic feedback --target "A-02" --severity low --summary "Good work on requirements"
 
 # Record a blocker
 agentic blocker --title "API dependency missing" --description "External API not available" --blocked-agents "I-01,I-02"
@@ -119,6 +119,8 @@ agentic list-blockers
 # End workflow session
 agentic end
 ```
+
+**Note:** `--artifacts` values are relative to the project's `artifacts/` directory (for example, `A-02_planning/requirements_spec.md`).
 
 ### TUI Usage
 
@@ -281,4 +283,4 @@ Available commands change based on context. Use `agentic --help` to see what's a
 
 ---
 
-*This documentation covers both CLI and TUI interfaces for the Agentic Workflow OS. Last updated: December 15, 2025*
+*This documentation covers both CLI and TUI interfaces for the Agentic Workflow OS. Last updated: December 21, 2025*

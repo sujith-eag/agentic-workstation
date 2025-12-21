@@ -4,7 +4,7 @@ High-level API for writing entries to exchange_log and context_log.
 Auto-generates IDs and manages both MD and YAML files.
 """
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Union
 
 __all__ = [
     "write_handoff",
@@ -36,6 +36,14 @@ from agentic_workflow.ledger.entry_builders import (
 from agentic_workflow.core.paths import PROJECTS_DIR
 
 
+def _resolve_project_dir(project_name: str, project_root: Optional[Union[str, Path]] = None) -> Path:
+    """Resolve project directory with optional override and ensure log folders exist."""
+    base_dir = Path(project_root) if project_root else PROJECTS_DIR / project_name
+    base_dir.mkdir(parents=True, exist_ok=True)
+    (base_dir / "agent_log").mkdir(parents=True, exist_ok=True)
+    return base_dir
+
+
 def _get_log_paths(project_dir: Path, log_type: str):
     """Get MD and YAML paths for a log type."""
     if log_type == "exchange":
@@ -51,15 +59,13 @@ def _get_log_paths(project_dir: Path, log_type: str):
 
 def write_handoff(project_name: str, from_agent: str, to_agent: str,
                   artifacts: Optional[List[str]] = None, notes: Optional[str] = None,
-                  status: str = "pending") -> tuple[str, str]:
+                  status: str = "pending", project_root: Optional[Union[str, Path]] = None) -> tuple[str, str]:
     """Write a handoff entry to exchange_log.
     
     Returns:
         Tuple of (entry_id, md_path)
     """
-    project_dir = PROJECTS_DIR / project_name
-    if not project_dir.exists():
-        raise FileNotFoundError(f"Project {project_name} not found")
+    project_dir = _resolve_project_dir(project_name, project_root)
     
     md_path, yaml_path = _get_log_paths(project_dir, "exchange")
     
@@ -86,15 +92,13 @@ def write_handoff(project_name: str, from_agent: str, to_agent: str,
 
 def write_feedback(project_name: str, reporter: str, target: str,
                    severity: str, summary: str,
-                   status: str = "open") -> tuple[str, str]:
+                   status: str = "open", project_root: Optional[Union[str, Path]] = None) -> tuple[str, str]:
     """Write a feedback entry to exchange_log.
     
     Returns:
         Tuple of (entry_id, md_path)
     """
-    project_dir = PROJECTS_DIR / project_name
-    if not project_dir.exists():
-        raise FileNotFoundError(f"Project {project_name} not found")
+    project_dir = _resolve_project_dir(project_name, project_root)
     
     md_path, yaml_path = _get_log_paths(project_dir, "exchange")
     
@@ -115,15 +119,14 @@ def write_feedback(project_name: str, reporter: str, target: str,
 
 
 def write_iteration(project_name: str, trigger: str, impacted_agents: Optional[List[str]],
-                    version_bump: Optional[str] = None, description: Optional[str] = None) -> tuple[str, str]:
+                    version_bump: Optional[str] = None, description: Optional[str] = None,
+                    project_root: Optional[Union[str, Path]] = None) -> tuple[str, str]:
     """Write an iteration entry to exchange_log.
     
     Returns:
         Tuple of (entry_id, md_path)
     """
-    project_dir = PROJECTS_DIR / project_name
-    if not project_dir.exists():
-        raise FileNotFoundError(f"Project {project_name} not found")
+    project_dir = _resolve_project_dir(project_name, project_root)
     
     md_path, yaml_path = _get_log_paths(project_dir, "exchange")
     
@@ -145,15 +148,14 @@ def write_iteration(project_name: str, trigger: str, impacted_agents: Optional[L
 
 def write_session(project_name: str, agent_id: str, agent_role: str,
                   status: str = "active", summary: Optional[str] = None,
-                  artifacts: Optional[List[str]] = None) -> tuple[str, str]:
+                  artifacts: Optional[List[str]] = None,
+                  project_root: Optional[Union[str, Path]] = None) -> tuple[str, str]:
     """Write a session entry to context_log.
     
     Returns:
         Tuple of (entry_id, md_path)
     """
-    project_dir = PROJECTS_DIR / project_name
-    if not project_dir.exists():
-        raise FileNotFoundError(f"Project {project_name} not found")
+    project_dir = _resolve_project_dir(project_name, project_root)
     
     md_path, yaml_path = _get_log_paths(project_dir, "context")
     
@@ -175,15 +177,13 @@ def write_session(project_name: str, agent_id: str, agent_role: str,
 
 def write_decision(project_name: str, agent: str, title: str,
                    rationale: str, impacts: Optional[str] = None,
-                   scope: str = "global") -> tuple[str, str]:
+                   scope: str = "global", project_root: Optional[Union[str, Path]] = None) -> tuple[str, str]:
     """Write a decision entry to context_log.
     
     Returns:
         Tuple of (entry_id, md_path)
     """
-    project_dir = PROJECTS_DIR / project_name
-    if not project_dir.exists():
-        raise FileNotFoundError(f"Project {project_name} not found")
+    project_dir = _resolve_project_dir(project_name, project_root)
     
     md_path, yaml_path = _get_log_paths(project_dir, "context")
     
@@ -205,15 +205,13 @@ def write_decision(project_name: str, agent: str, title: str,
 
 def write_assumption(project_name: str, agent: str, assumption: str,
                      rationale: Optional[str] = None, reversal_condition: Optional[str] = None,
-                     status: str = "active") -> tuple[str, str]:
+                     status: str = "active", project_root: Optional[Union[str, Path]] = None) -> tuple[str, str]:
     """Write an assumption entry to context_log.
     
     Returns:
         Tuple of (entry_id, md_path)
     """
-    project_dir = PROJECTS_DIR / project_name
-    if not project_dir.exists():
-        raise FileNotFoundError(f"Project {project_name} not found")
+    project_dir = _resolve_project_dir(project_name, project_root)
     
     md_path, yaml_path = _get_log_paths(project_dir, "context")
     
@@ -236,15 +234,13 @@ def write_assumption(project_name: str, agent: str, assumption: str,
 def write_blocker(project_name: str, reporter: str, title: str,
                   description: str, blocked_agents: Optional[List[str]] = None,
                   required_action: Optional[str] = None,
-                  status: str = "pending") -> tuple[str, str]:
+                  status: str = "pending", project_root: Optional[Union[str, Path]] = None) -> tuple[str, str]:
     """Write a blocker entry to context_log.
     
     Returns:
         Tuple of (entry_id, md_path)
     """
-    project_dir = PROJECTS_DIR / project_name
-    if not project_dir.exists():
-        raise FileNotFoundError(f"Project {project_name} not found")
+    project_dir = _resolve_project_dir(project_name, project_root)
     
     md_path, yaml_path = _get_log_paths(project_dir, "context")
     

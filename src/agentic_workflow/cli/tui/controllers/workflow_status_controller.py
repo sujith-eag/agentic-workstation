@@ -5,7 +5,6 @@ This module contains controllers for workflow-related operations.
 """
 
 from .base_controller import BaseController
-from ...utils import display_error, display_info, display_warning
 
 
 class WorkflowStatusController(BaseController):
@@ -13,21 +12,24 @@ class WorkflowStatusController(BaseController):
 
     def execute(self, *args, **kwargs) -> None:
         """Execute workflow status display."""
-        display_info("Workflow Status")
-        display_info("")
+        self.feedback.info("Workflow Status")
 
         try:
-            # Get project name from app context
-            project_name = self.app.project_root.name if self.app.project_root else None
-            
-            # Use QueryHandlers for status display
-            self.app.query_handlers.handle_status(project=project_name)
+            if not self.app.project_root:
+                self.feedback.warning("Not in a project context.")
+                return
+
+            project_name = self.app.project_root.name
+            status_data = self.app.project_handlers.get_project_status_data(project_name)
+
+            from ..views import ProjectStatusView
+            view = ProjectStatusView(console=self.console, theme_map=self.theme.get_color_map())
+            view.render(status_data)
 
         except Exception as e:
-            display_error(f"Failed to get workflow status: {e}")
+            self.feedback.error(f"Failed to get workflow status: {e}")
 
-        import questionary
-        questionary.press_any_key_to_continue().ask()
+        self.input_handler.wait_for_user()
 
 
 __all__ = ["WorkflowStatusController"]

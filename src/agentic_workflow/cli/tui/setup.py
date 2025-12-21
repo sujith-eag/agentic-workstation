@@ -4,25 +4,44 @@ Triggers on first run to populate ~/.config/agentic/config.yaml.
 """
 import os
 import sys
-import questionary
-from questionary import Choice
 from pathlib import Path
+from typing import Optional
+import yaml
+from questionary import Choice
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
-import yaml
 
 # Import the schema to ensure we save valid data
 from agentic_workflow.core.schema import SystemConfig
 from agentic_workflow.core.exceptions import ConfigError
 
-console = Console()
+# Import UI utilities
+from agentic_workflow.cli.ui_utils import get_agentic_ascii_art
+from .ui import InputHandler, InputResult, FeedbackPresenter, Theme
+
+console: Optional[Console] = None
 
 DEFAULT_CONFIG_DIR = Path.home() / ".config" / "agentic"
 
 
-def run_setup_wizard() -> None:
-    """Launch the first-run configuration wizard."""
+def run_setup_wizard(
+    console_override: Optional[Console] = None,
+    input_handler: Optional[InputHandler] = None,
+    feedback: Optional[FeedbackPresenter] = None,
+    layout=None,
+) -> None:
+    """Launch the first-run configuration wizard.
+
+    When invoked from the TUI, pass the shared `console`, `input_handler`, and `feedback`
+    to avoid creating a new module-level Console. When invoked from CLI/bootstrap without
+    a TUI context, the wizard will fall back to a local Console instance.
+    """
+    global console
+    console = console_override or console or Console()
+    theme = Theme
+    input_handler = input_handler or InputHandler(console)
+    feedback = feedback or FeedbackPresenter(console, theme_map=theme.feedback_theme())
     # For testing: auto-setup with defaults
     if os.environ.get('AGENTIC_AUTO_SETUP'):
         config_data = {
@@ -34,10 +53,14 @@ def run_setup_wizard() -> None:
         }
         _save_config(config_data)
         _ensure_workspace_exists(Path(config_data['default_workspace']).expanduser())
-        console.print("[green]✓ Auto-setup complete![/green]")
+        feedback.success("Auto-setup complete!")
         return
 
     console.clear()
+
+    # Display AGENTIC ASCII art
+    console.print(get_agentic_ascii_art(), style="bold cyan", justify="center")
+    console.print()
 
     # 1. Welcome UI
     welcome = Text("Welcome to Agentic Workflow OS\n", style="bold blue")
@@ -61,31 +84,43 @@ def run_setup_wizard() -> None:
         if default_ws not in valid_values:
             default_ws = None 
 
-        ws_choice = questionary.select(
-            "Where should we store your projects?",
+        ws_choice = input_handler.get_selection(
             choices=choices,
-            default=default_ws 
-        ).ask()
+            message="Where should we store your projects?"
+        )
+
+        if ws_choice == InputResult.EXIT or ws_choice is None:
+            feedback.warning("Setup cancelled.")
+            return
 
         if ws_choice == "custom":
-            workspace_path = questionary.path("Path:", default=default_ws).ask()
+            workspace_path = input_handler.get_text("Path:", default=default_ws)
+            if workspace_path == InputResult.EXIT or workspace_path is None:
+                feedback.warning("Setup cancelled.")
+                return
         else:
             workspace_path = ws_choice
 
         # 3. Editor Selection
-        editor_choice = questionary.select(
-            "Which editor do you use?",
+        editor_choice = input_handler.get_selection(
             choices=[
-                {"name": "VS Code (code)", "value": "code"},
-                {"name": "Vim (vim)", "value": "vim"},
-                {"name": "Nano (nano)", "value": "nano"},
-                {"name": "Custom...", "value": "custom"}
+                Choice(title="VS Code (code)", value="code"),
+                Choice(title="Vim (vim)", value="vim"),
+                Choice(title="Nano (nano)", value="nano"),
+                Choice(title="Custom...", value="custom")
             ],
-            default="code"
-        ).ask()
+            message="Which editor do you use?"
+        )
+
+        if editor_choice == InputResult.EXIT or editor_choice is None:
+            feedback.warning("Setup cancelled.")
+            return
 
         if editor_choice == "custom":
-            editor_cmd = questionary.text("Enter command (e.g., 'subl', 'notepad'):").ask()
+            editor_cmd = input_handler.get_text("Enter command (e.g., 'subl', 'notepad'):")
+            if editor_cmd == InputResult.EXIT or editor_cmd is None:
+                feedback.warning("Setup cancelled.")
+                return
         else:
             editor_cmd = editor_choice
 
@@ -104,23 +139,27 @@ def run_setup_wizard() -> None:
         console.print(f"  • Default Editor:    [cyan]{config_data['editor_command']}[/cyan]")
         console.print()
 
-        confirm = questionary.confirm("Save configuration and continue?", default=True).ask()
+        confirm = input_handler.get_confirmation("Save configuration and continue?", default=True)
+        if confirm == InputResult.EXIT:
+            console.print("[yellow]Setup cancelled.[/yellow]")
+            return
+
         if confirm:
             _save_config(config_data)
             _ensure_workspace_exists(Path(workspace_path))
 
-            console.print("[green]✓ Setup complete![/green]")
+            feedback.success("Setup complete!")
             console.print("Launching application...\n")
             # Logic flow returns to main.py here to continue execution
         else:
-            console.print("[red]Setup cancelled. Exiting.[/red]")
+            feedback.warning("Setup cancelled. Exiting.")
             sys.exit(0)
 
     except KeyboardInterrupt:
-        console.print("\n[yellow]Setup interrupted.[/yellow]")
+        feedback.warning("Setup interrupted.")
         sys.exit(1)
     except Exception as e:
-        console.print(f"[red]Setup failed: {e}[/red]")
+        feedback.error(f"Setup failed: {e}")
         sys.exit(1)
 
 

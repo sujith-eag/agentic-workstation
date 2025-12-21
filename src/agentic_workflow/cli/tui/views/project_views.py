@@ -7,11 +7,8 @@ project status, and other project-related information.
 
 from typing import Dict, Any, List
 from rich.table import Table
-from rich.console import Console
 
 from .base_views import BaseView
-
-console = Console()
 
 
 class ProjectListView(BaseView):
@@ -22,14 +19,19 @@ class ProjectListView(BaseView):
         projects = data.get('projects', [])
 
         if not projects:
-            console.print("No projects found.")
+            warning_style = self.theme_map.get("warning.text", "yellow")
+            self.console.print(f"[{warning_style}]No projects found.[/{warning_style}]")
             return
 
         # Format projects in a nice table
-        table = Table()
-        table.add_column("Project Name", style="cyan", no_wrap=True)
-        table.add_column("Workflow", style="green")
-        table.add_column("Description", style="yellow")
+        table = Table(
+            title="Projects",
+            title_style=self.theme_map.get("table.title", "bold blue"),
+            border_style=self.theme_map.get("table.border", "blue"),
+        )
+        table.add_column("Project Name", style=self.theme_map.get("primary", "cyan"), no_wrap=True)
+        table.add_column("Workflow", style=self.theme_map.get("success", "green"))
+        table.add_column("Description", style=self.theme_map.get("accent", "yellow"))
 
         for project in projects:
             table.add_row(
@@ -38,7 +40,7 @@ class ProjectListView(BaseView):
                 project['description'] or "(no description)"
             )
 
-        console.print(table)
+        self.console.print(table)
 
 
 class ProjectStatusView(BaseView):
@@ -49,15 +51,21 @@ class ProjectStatusView(BaseView):
         config = data.get('config')
 
         if not config:
-            console.print("⚠ Project found but no configuration available")
+            warning_style = self.theme_map.get("warning.text", "yellow")
+            info_style = self.theme_map.get("info.text", "cyan")
             location = data.get('path', 'unknown')
-            console.print(f"ℹ Location: {location}")
+            self.console.print(f"[{warning_style}]⚠ Project found but no configuration available[/]")
+            self.console.print(f"[{info_style}]ℹ Location: {location}[/{info_style}]")
             return
 
         # Format project status in a nice table
-        table = Table()
-        table.add_column("Property", style="cyan", no_wrap=True)
-        table.add_column("Value", style="yellow")
+        table = Table(
+            title="Project Status",
+            title_style=self.theme_map.get("table.title", "bold blue"),
+            border_style=self.theme_map.get("table.border", "blue"),
+        )
+        table.add_column("Property", style=self.theme_map.get("primary", "cyan"), no_wrap=True)
+        table.add_column("Value", style=self.theme_map.get("accent", "yellow"))
 
         # Add basic project info
         table.add_row("Project Name", config.get('name', data.get('project_name', 'unknown')))
@@ -71,7 +79,7 @@ class ProjectStatusView(BaseView):
             table.add_row("Current Stage", workflow_status.get('stage', 'unknown'))
             table.add_row("Active Agent", workflow_status.get('active_agent', 'none'))
 
-        console.print(table)
+        self.console.print(table)
 
 
 class ProjectSummaryView(BaseView):
@@ -85,22 +93,22 @@ class ProjectSummaryView(BaseView):
         next_steps = data.get('next_steps', [])
 
         # Header
-        console.print(f"\n[bold green]Project '{project_name}' created successfully![/bold green]")
-        console.print(f"[dim]Workflow: {workflow_type}[/dim]\n")
+        self.console.print(f"\n[bold green]Project '{project_name}' created successfully![/bold green]")
+        self.console.print(f"[dim]Workflow: {workflow_type}[/dim]\n")
 
         # Directories section
         if directories:
-            console.print("[bold cyan]Project Structure:[/bold cyan]")
+            self.console.print("[bold cyan]Project Structure:[/bold cyan]")
             for directory in directories:
-                console.print(f"  • {directory}/")
-            console.print()
+                self.console.print(f"  • {directory}/")
+            self.console.print()
 
         # Next steps section
         if next_steps:
-            console.print("[bold cyan]Next Steps:[/bold cyan]")
+            self.console.print("[bold cyan]Next Steps:[/bold cyan]")
             for step in next_steps:
-                console.print(f"  {step}")
-            console.print()
+                self.console.print(f"  {step}")
+            self.console.print()
 
 
 __all__ = ["ProjectListView", "ProjectStatusView", "ProjectSummaryView"]

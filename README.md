@@ -2,7 +2,7 @@
 
 > **Structured Architectural Scaffolding for AI Development**
 
-[![Version](https://img.shields.io/badge/version-1.0.8-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
+[![Version](https://img.shields.io/badge/version-1.0.9-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Agentic Workflow OS** is a development platform that orchestrates Multi-Agent Systems to plan, architect, and implement complex software projects. Unlike "Chat with Code" tools that rely on messy, unstructured conversation history, this system enforces a **Context-First** philosophy. It treats Agent Context as a file-system state machine, ensuring that your AI Engineer knows exactly what your AI Architect decided.
@@ -83,17 +83,25 @@ For detailed CLI documentation, see [CLI_REFERENCE.md](CLI_REFERENCE.md). For in
 The CLI uses a **context-aware design** - commands available depend on whether you're in a project directory or not.
 
 #### Global Commands (from repository root)
-- `agentic init <project>` - Initialize new project with workflow
-- `agentic workflows` - List available workflow types
-- `agentic config` - Show configuration
-- `agentic` - Launch TUI (Terminal User Interface)
+- `agentic init <name> --workflow <type> --description "desc"` - Initialize new project with workflow
+- `agentic list` - List all projects or show details for one
+- `agentic delete <name>` - Permanently delete a project
+- `agentic workflows` - List available workflow definitions
+- `agentic config` - View or edit global configuration
+- `agentic` - Launch TUI in global mode
 
 #### Project Commands (from within project directory)
 - `agentic status` - Show project status and workflow state
-- `agentic activate <agent_id>` - Activate specific agent (e.g., A-01, I-02)
-- `agentic handoff --to A-02 --artifacts "file.md"` - Record agent handoff (from agent inferred from active session)
+- `agentic activate <agent_id>` - Activate specific agent session
+- `agentic handoff --to <agent_id> --artifacts "files"` - Record agent handoff with artifacts
 - `agentic decision --title "Title" --rationale "Reason"` - Record project decision
 - `agentic end` - End current workflow session
+- `agentic feedback --target <agent_id> --severity <level> --summary "Summary"` - Record feedback for an agent or artifact
+- `agentic blocker --title "Title" --description "Desc" --blocked-agents "ids"` - Record a blocker that prevents progress
+- `agentic iteration --trigger "Trigger" --impacted-agents "ids" --description "Desc"` - Record an iteration in the development process
+- `agentic assumption --assumption "Assumption" --rationale "Rationale"` - Record an assumption that may affect the project
+- `agentic list-pending` - List pending handoffs for the current project
+- `agentic list-blockers` - List active blockers for the current project
 
 ---
 

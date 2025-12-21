@@ -4,14 +4,11 @@ Global menu controller for TUI.
 This module contains the controller for global context menu operations.
 """
 
-import questionary
-from rich.console import Console
-from rich.panel import Panel
+from questionary import Choice
 
 from .base_controller import BaseController
-from ...utils import display_info
-
-console = Console()
+from ...ui_utils import get_agentic_ascii_art
+from ..ui import InputResult, Theme
 
 
 class GlobalMenuController(BaseController):
@@ -19,35 +16,43 @@ class GlobalMenuController(BaseController):
 
     def execute(self, *args, **kwargs) -> str:
         """Execute the global menu and return the selected action."""
-        console.clear()
+        # Create menu content; layout will clear
+        ascii_art = get_agentic_ascii_art()
 
-        # Header
-        header = Panel.fit(
-            "[bold blue]Agentic Workflow OS - Global Mode[/bold blue]\n"
-            "[dim]Project Management & Creation[/dim]",
-            border_style="blue"
+        from rich.text import Text
+
+        # Style the ASCII art
+        styled_ascii_art = Text(ascii_art.strip(), style=self.theme.get_color_map().get("ascii_art", "cyan"))
+
+        # Use layout manager to render
+        self.layout.render_screen(
+            styled_ascii_art,
+            title="Agentic Workflow OS - Global Mode",
+            subtitle="Project Management & Creation",
+            footer_text="",
+            clear=False
         )
-        console.print(header)
-        display_info("")
 
         # Menu options
-        choice = questionary.select(
-            "Select an option:",
+        choice = self.input_handler.get_selection(
             choices=[
-                {"name": "Create New Project", "value": "create"},
-                {"name": "List Existing Projects", "value": "list"},
-                {"name": "Manage Existing Project", "value": "manage"},
-                {"name": "System Information", "value": "info"},
-                {"name": "Exit", "value": "exit"}
+                Choice(title="Create New Project", value="create"),
+                Choice(title="List Existing Projects", value="list"),
+                Choice(title="Manage Existing Project", value="manage"),
+                Choice(title="System Information", value="info")
             ],
-            use_shortcuts=True
-        ).ask()
+            message="Select an option:"
+        )
 
         return choice
 
-    def execute_create_project(self) -> None:
-        """Execute project creation wizard."""
-        self.app.project_wizard_controller.execute()
+    def execute_create_project(self) -> bool:
+        """Execute project creation wizard.
+        
+        Returns:
+            True if project was created, False otherwise
+        """
+        return self.app.project_wizard_controller.execute()
 
     def execute_list_projects(self) -> None:
         """Execute project listing."""
@@ -63,19 +68,24 @@ class GlobalMenuController(BaseController):
 
     def run_menu(self) -> None:
         """Run the complete global menu loop."""
-        choice = self.execute()
+        while True:
+            result = self.execute()
 
-        if choice == "create":
-            self.execute_create_project()
-        elif choice == "list":
-            self.execute_list_projects()
-        elif choice == "manage":
-            self.execute_manage_project()
-        elif choice == "info":
-            self.execute_system_info()
-        elif choice == "exit":
-            import sys
-            sys.exit(0)
+            if result == InputResult.EXIT:
+                self.handle_exit()
+                break
+            elif result == "create":
+                if self.execute_create_project():
+                    # Project was created successfully, exit the TUI
+                    self.handle_exit()
+                    break
+            elif result == "list":
+                self.execute_list_projects()
+            elif result == "manage":
+                self.execute_manage_project()
+            elif result == "info":
+                self.execute_system_info()
+            # Continue the loop for any other case
 
 
 __all__ = ["GlobalMenuController"]

@@ -5,10 +5,12 @@ This module contains controllers for navigation operations.
 """
 
 from pathlib import Path
-import questionary
+from rich.console import Group
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 
 from .base_controller import BaseController
-from ...utils import display_error, display_info
 
 
 class ProjectNavigationController(BaseController):
@@ -16,50 +18,57 @@ class ProjectNavigationController(BaseController):
 
     def execute(self, *args, **kwargs) -> None:
         """Execute project navigation display."""
-        display_info("Project Navigation")
-        display_info("")
-
         if not self.app.project_root:
-            display_error("Not in a project directory.")
-            questionary.press_any_key_to_continue().ask()
+            self.feedback.error("Not in a project directory.")
+            self.input_handler.wait_for_user()
             return
 
-        self._display_project_info()
-        self._display_directory_structure()
-        self._display_help_info()
+        summary_panel = self._build_summary_panel()
+        dir_panel = self._build_directory_panel()
+        tips_panel = self._build_tips_panel()
 
-        questionary.press_any_key_to_continue().ask()
+        self.console.print(Group(summary_panel, dir_panel, tips_panel))
+        self.input_handler.wait_for_user()
 
-    def _display_project_info(self) -> None:
-        """Display basic project information."""
-        display_info(f"Project: {self.app.project_root.name}")
-        display_info(f"Location: {self.app.project_root}")
-        display_info("")
+    def _build_summary_panel(self) -> Panel:
+        """Compact project summary panel."""
+        body = Text()
+        body.append(f"Project: {self.app.project_root.name}\n", style="bold")
+        body.append(f"Location: {self.app.project_root}")
+        return Panel(body, title="Project Navigation", padding=(0, 1))
 
-    def _display_directory_structure(self) -> None:
-        """Display the key project directories with file counts."""
-        dirs_to_show = ["agent_files", "artifacts", "docs", "input", "package"]
-        for dir_name in dirs_to_show:
-            dir_path = self.app.project_root / dir_name
-            if dir_path.exists():
-                file_count = self._count_files(dir_path)
-                display_info(f"• {dir_name}/ ({file_count} items)")
-            else:
-                display_info(f"• {dir_name}/ (empty)")
+    def _build_directory_panel(self) -> Panel:
+        """Compact directory overview table using handler-provided inventory."""
+        inventory = self.app.query_handlers.get_project_inventory(self.app.project_root)
+        entries = inventory.get("entries", [])
 
-    def _display_help_info(self) -> None:
-        """Display helpful information about project directories."""
-        display_info("")
-        display_info("Use your file explorer or terminal to navigate the full project structure.")
-        display_info("Key directories:")
-        display_info("  • agent_files/ - Generated agent prompts and instructions")
-        display_info("  • artifacts/ - Agent outputs and deliverables")
-        display_info("  • docs/ - Project documentation")
-        display_info("  • input/ - User requirements and specifications")
-        display_info("  • package/ - Final project deliverables")
+        table = Table(show_header=True, header_style="bold", expand=True, box=None, pad_edge=False)
+        table.add_column("Entry", style="cyan", no_wrap=True)
+        table.add_column("Items", style="magenta", width=8, no_wrap=True)
+        table.add_column("Type", style="white", no_wrap=True)
 
-    def _count_files(self, dir_path: Path) -> int:
-        """Count total files in a directory recursively."""
+        if not entries:
+            table.add_row("(empty)", "-", "-")
+        else:
+            for entry in entries:
+                name = entry.get("name", "?")
+                count = str(entry.get("count", 0)) if entry.get("type") == "dir" else "-"
+                entry_type = "dir" if entry.get("type") == "dir" else "file"
+                table.add_row(name, count, entry_type)
+
+        return Panel(table, title="Project Root", padding=(0, 1))
+
+    def _build_tips_panel(self) -> Panel:
+        """Helpful navigation tips."""
+        tips = Text()
+        tips.append("Use your file explorer or terminal to browse.\n", style="bold")
+        tips.append("Tip: run `ls` or `tree` from the project root to inspect structure.")
+        return Panel(tips, padding=(0, 1))
+
+    def _count_entries(self, dir_path: Path) -> int:
+        """Count directory entries (files and subdirectories)."""
+        if not dir_path.exists():
+            return 0
         return len(list(dir_path.rglob("*")))
 
 

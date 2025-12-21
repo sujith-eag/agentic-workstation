@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 from .base_controller import BaseController
-from ...utils import display_info
 from agentic_workflow import __version__
 
 
@@ -17,29 +16,23 @@ class SystemInfoController(BaseController):
 
     def execute(self, *args, **kwargs) -> None:
         """Execute system information display."""
-        display_info("System Information")
-        display_info("")
+        self.feedback.info("System Information")
 
         # Get real system information
-        # Count projects using ProjectService
         project_count = 0
         try:
-            from agentic_workflow.services import ProjectService
-            project_service = ProjectService()
-            result = project_service.list_projects()
-            project_count = result['count']
-        except:
-            project_count = 0  # fallback
+            projects_data = self.app.project_handlers.list_projects_data()
+            project_count = projects_data.get('count', 0)
+        except Exception:
+            project_count = 0
 
         # Count workflows
         workflow_count = 0
         try:
-            from agentic_workflow.services import WorkflowService
-            workflow_service = WorkflowService()
-            workflows = workflow_service.list_workflows()
+            workflows = self.app.workflow_handlers.list_workflows_data()
             workflow_count = len(workflows)
-        except:
-            workflow_count = 4  # fallback
+        except Exception:
+            workflow_count = 0
 
         # Prepare data for the view
         system_data = {
@@ -53,11 +46,10 @@ class SystemInfoController(BaseController):
 
         # Use the new view to render system information
         from ..views import SystemInfoView
-        view = SystemInfoView()
+        view = SystemInfoView(console=self.console, theme_map=self.theme.get_color_map())
         view.render(system_data)
 
-        import questionary
-        questionary.press_any_key_to_continue().ask()
+        self.input_handler.wait_for_user()
 
 
 __all__ = ["SystemInfoController"]

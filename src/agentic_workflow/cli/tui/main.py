@@ -3,21 +3,36 @@ Text User Interface for Agentic Workflow OS
 Provides interactive menus and guided workflows for better UX.
 """
 
-import questionary
 from pathlib import Path
 import sys
 from typing import Optional, Dict, Any
+from dataclasses import dataclass
 
-from ..utils import is_in_project, get_project_root, display_error, display_success, display_info, display_warning
+from rich.console import Console
+
 from ..handlers import (
     ProjectHandlers,
     WorkflowHandlers,
     SessionHandlers,
     EntryHandlers,
-    QueryHandlers
+    QueryHandlers,
+    ArtifactHandlers,
 )
+from .ui import LayoutManager, InputHandler, Theme, FeedbackPresenter, ProgressPresenter
 from agentic_workflow.core.exceptions import AgenticWorkflowError
 from agentic_workflow import __version__
+
+
+@dataclass
+class TUIContext:
+    """Shared UI dependencies for the TUI runtime."""
+
+    console: Console
+    layout: LayoutManager
+    input_handler: InputHandler
+    theme: Any
+    feedback: FeedbackPresenter
+    progress: ProgressPresenter
 
 
 class TUIApp:
@@ -28,16 +43,27 @@ class TUIApp:
         self.config = config
         self.current_context = "project" if config and config.is_project_context else "global"
         self.project_root = config.project.root_path if config and config.project else None
-        # Note: session_context removed - controllers now fetch fresh data from services
+        self.console = Console()
+        self.layout = LayoutManager(self.console, theme_map=Theme.get_color_map())
+        self.input_handler = InputHandler(self.console)
+        self.theme = Theme
+        self.feedback = FeedbackPresenter(self.console, layout=self.layout, theme_map=self.theme.feedback_theme())
+        self.progress = ProgressPresenter(self.console, layout=self.layout, theme_map=self.theme.progress_theme())
+        self.context = TUIContext(
+            console=self.console,
+            layout=self.layout,
+            input_handler=self.input_handler,
+            theme=self.theme,
+            feedback=self.feedback,
+            progress=self.progress,
+        )
+        # Note: session_context removed - controllers now fetch fresh data from handlers
         self.project_handlers = ProjectHandlers()
         self.workflow_handlers = WorkflowHandlers()
         self.session_handlers = SessionHandlers(config)
         self.entry_handlers = EntryHandlers()
         self.query_handlers = QueryHandlers()
-        
-        # Initialize operations
-        from .operations import ArtifactOperations
-        self.artifact_ops = ArtifactOperations(self)
+        self.artifact_handlers = ArtifactHandlers()
         
         # Initialize controllers
         from .controllers import (
@@ -63,22 +89,29 @@ class TUIApp:
 
         # Initialize views
         from .views import ErrorView
-        self.error_view = ErrorView()
+        self.error_view = ErrorView(console=self.console, input_handler=self.input_handler, theme_map=self.theme.get_color_map())
 
     def run(self):
         """Main TUI loop"""
         try:
-            while True:
-                if self.current_context == "global":
-                    self.global_menu_controller.run_menu()
-                else:
+            if self.current_context == "global":
+                # Global menu handles its own loop and exits when done
+                self.global_menu_controller.run_menu()
+                return  # Exit after global menu completes
+            else:
+                # Project menu loop
+                while True:
                     new_context = self.project_menu_controller.run_menu()
                     if new_context == "global":
                         self.current_context = "global"
                         self.project_root = None
+                        break  # Go back to global
         except KeyboardInterrupt:
-            display_info("Goodbye!")
-            sys.exit(0)
+            self.feedback.info("Goodbye!")
+            return  # Exit gracefully
+        except SystemExit:
+            # Handle SystemExit from menu cancellation
+            return
         except AgenticWorkflowError as e:
             # Business Logic Errors (Governance, Config, etc.)
             self.error_view.display_error_modal(str(e), title="Operation Failed")
@@ -92,24 +125,21 @@ class TUIApp:
 
     def _list_projects(self):
         """List existing projects"""
-        display_info("Existing Projects")
-        display_info("")
+        self.feedback.info("Existing Projects")
+        self.feedback.info("")
 
         try:
-            # Get project data directly from service
-            from agentic_workflow.services import ProjectService
-            project_service = ProjectService()
-            result = project_service.list_projects()
+            result = self.project_handlers.list_projects_data()
 
             # Use the new view to render the project list
             from .views import ProjectListView
-            view = ProjectListView()
+            view = ProjectListView(console=self.console, theme_map=self.theme.get_color_map())
             view.render(result)
 
         except Exception as e:
-            display_error(f"Failed to list projects: {e}")
+            self.feedback.error(f"Failed to list projects: {e}")
 
-        questionary.press_any_key_to_continue().ask()
+        self.input_handler.wait_for_user()
 
 
 def main():
@@ -122,4 +152,4 @@ if __name__ == "__main__":
     main()
 
 
-__all__ = ["TUIApp", "main"]
+__all__ = ["TUIApp", "TUIContext", "main"]

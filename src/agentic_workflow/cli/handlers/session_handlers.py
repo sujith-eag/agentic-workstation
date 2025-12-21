@@ -4,7 +4,7 @@ Focus: Active lifecycle management (Init, Activate, End).
 """
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 import logging
 
 from agentic_workflow.core.exceptions import (
@@ -66,13 +66,9 @@ class SessionHandlers:
                 "agentic status", 
                 f"agentic activate {first_agent}"
             ]
-            
-            # Display Rich Summary
-            directories = [str(p.name) for p in result.created_files if p.is_dir()] # Simplified
-            # Better fallback for display
-            if not directories:
-                 directories = ["agent_files", "agent_context", "agent_log", "artifacts"]
 
+            # Display Rich Summary using actual root inventory
+            directories = self._summarize_root_entries(result.target_path)
             display_project_summary(project, workflow_type, directories, next_steps)
             display_success(f"Project '{project}' initialized successfully")
 
@@ -160,6 +156,24 @@ class SessionHandlers:
 
         except Exception as e:
             handle_error(e, "session end", {"project": project})
+
+    def _summarize_root_entries(self, root_path: Path) -> List[str]:
+        """Summarize top-level project entries for creation output."""
+        entries: List[str] = []
+        if not root_path or not Path(root_path).exists():
+            return entries
+
+        for item in Path(root_path).iterdir():
+            if item.name.startswith('.'):
+                continue
+            if item.is_dir():
+                count = sum(1 for _ in item.rglob('*'))
+                entries.append(f"{item.name}/ ({count} items)")
+            else:
+                entries.append(f"{item.name} (file)")
+
+        entries.sort()
+        return entries
 
 
 __all__ = ["SessionHandlers"]

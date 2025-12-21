@@ -17,6 +17,22 @@ class WorkflowHandlers:
     def __init__(self, config=None):
         """Initialize the WorkflowHandlers with optional config."""
         self.config = config
+        from agentic_workflow.services import WorkflowService
+        self.workflow_service = WorkflowService()
+
+    # --- TUI-friendly helpers (data only, no display) ---
+    def list_workflows_data(self) -> list:
+        """Return workflow metadata for selection dialogs."""
+        workflows = self.workflow_service.list_workflows()
+        enriched = []
+        for workflow in workflows:
+            try:
+                info = self.workflow_service.get_workflow_info(workflow["name"])
+                description = info.get("description", "No description")
+            except Exception:
+                description = "No description"
+            enriched.append({"name": workflow.get("name"), "description": description})
+        return enriched
 
     def handle_set_stage(
         self,

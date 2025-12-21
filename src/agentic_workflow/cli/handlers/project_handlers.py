@@ -22,6 +22,15 @@ class ProjectHandlers:
         """Initialize the ProjectHandlers with required services."""
         self.project_service = ProjectService()
 
+    # --- TUI-friendly helpers (data only, no display) ---
+    def list_projects_data(self) -> Dict[str, Any]:
+        """Return raw project listing data without rendering."""
+        return self.project_service.list_projects()
+
+    def get_project_status_data(self, project_name: str) -> Dict[str, Any]:
+        """Return raw project status data without rendering."""
+        return self.project_service.get_project_status(project_name)
+
     def handle_list(
         self,
         name: Optional[str] = None,

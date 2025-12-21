@@ -82,7 +82,10 @@ class ProjectService:
 
         # Initialize project using pipeline
         pipeline = InitPipeline(self.config)
-        result = pipeline.run(project_name, str(target_path), workflow_name or "planning", force, description)
+        if description is not None:
+            result = pipeline.run(project_name, str(target_path), workflow_name or "planning", force=force, description=description)
+        else:
+            result = pipeline.run(project_name, str(target_path), workflow_name or "planning", force=force)
 
         # Update project index with current state (populates artifact registry)
         if result.success:

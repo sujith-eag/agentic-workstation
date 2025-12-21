@@ -140,7 +140,6 @@ class RuntimeConfig(BaseModel):
     workflow_rules: WorkflowRules = Field(default_factory=WorkflowRules)
     verbose: bool = Field(default=False, description="Runtime verbosity flag")
     force: bool = Field(default=False, description="Force operations")
-
     @property
     def is_project_context(self) -> bool:
         """Check if we're in a project context"""
