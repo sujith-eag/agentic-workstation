@@ -2,7 +2,7 @@
 
 > **Structured Architectural Scaffolding for AI Development**
 
-[![Version](https://img.shields.io/badge/version-1.0.9-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
+[![Version](https://img.shields.io/badge/version-1.0.10-blue.svg)](https://github.com/sujith-eag/agentic_workflow)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Agentic Workflow OS** is a development platform that orchestrates Multi-Agent Systems to plan, architect, and implement complex software projects. Unlike "Chat with Code" tools that rely on messy, unstructured conversation history, this system enforces a **Context-First** philosophy. It treats Agent Context as a file-system state machine, ensuring that your AI Engineer knows exactly what your AI Architect decided.
@@ -10,6 +10,8 @@
 ---
 
 ## ⚡ Why Use This?
+
+*Agentic Workflow OS - Because AI deserves structure, and developers deserve results.*
 
 Most AI coding tools suffer from **Context Drift**. After 20 messages, the AI forgets the architectural constraints you set in message #1.
 
@@ -22,6 +24,18 @@ AI for projects and work is like a rocket: it gives a quick boost of velocity if
 
 The system operates on a **Stateless Core / Stateful Edge** model.
 
+## 🔄 Workflow Comparison
+
+| Feature | Agentic Workflow OS | ChatGPT + Manual | GitHub Copilot | VS Code + Cursor |
+|---------|-------------------|------------------|----------------|------------------|
+| **Context Preservation** | ✅ File-system state machine | ❌ Conversation drift | ❌ Session-based | ❌ Session-based |
+| **Role Separation** | ✅ Strict agent boundaries | ❌ Single AI persona | ❌ Single AI persona | ❌ Single AI persona |
+| **Artifact Validation** | ✅ Automated quality gates | ❌ Manual review | ❌ No validation | ❌ No validation |
+| **Audit Trail** | ✅ Complete history | ❌ Lost in chat | ❌ No tracking | ❌ No tracking |
+| **Multi-Agent Coordination** | ✅ Orchestrated handoffs | ❌ Manual coordination | ❌ No coordination | ❌ No coordination |
+| **Production Ready** | ✅ Enterprise-grade output | ⚠️ Requires significant editing | ⚠️ Requires significant editing | ⚠️ Requires significant editing |
+
+
 ---
 
 ## 🚀 Quick Start
@@ -33,9 +47,9 @@ Create and activate a Python virtual environment:
 python3 -m venv myproject-env
 
 # Activate the environment
-source myproject-env/bin/activate  
+source myproject-env/bin/activate
 
-# On Windows: 
+# On Windows:
 source myproject-env\Scripts\activate
 ```
 
@@ -74,7 +88,9 @@ docker rmi agentic-workstation
 docker rm $(docker ps -aq --filter ancestor=agentic-workstation)
 ```
 
-## CLI & TUI Usage
+---
+
+## 🛠️ CLI & TUI Usage
 
 For detailed CLI documentation, see [CLI_REFERENCE.md](CLI_REFERENCE.md). For interactive usage, use the Text User Interface (TUI) with `agentic`.
 

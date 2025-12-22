@@ -1,5 +1,5 @@
 """
-Theme definitions for the Agentic Workflow OS TUI.
+Theme definitions for the Agentic Workflow OS CLI & TUI.
 
 This module provides semantic color and style constants for consistent UI theming.
 """
@@ -99,6 +99,61 @@ class Theme:
         "accent": ACCENT,
     }
 
+    # CLI-specific semantic tokens
+    CLI = {
+        # Display message tokens
+        "display.success.icon": "✓",
+        "display.success.color": "green",
+        "display.error.icon": "✗",
+        "display.error.color": "red",
+        "display.warning.icon": "⚠",
+        "display.warning.color": "yellow",
+        "display.info.icon": "ℹ",
+        "display.info.color": "blue",
+
+        # Panel styling
+        "panel.success.border": "green",
+        "panel.error.border": "red",
+        "panel.warning.border": "yellow",
+        "panel.info.border": "blue",
+
+        # Progress indicators
+        "progress.spinner.color": "cyan",
+        "progress.text.color": "cyan",
+
+        # Input styling
+        "input.prompt.color": "bold cyan",
+        "input.hint.color": "dim white",
+        "input.cancel.color": "red",
+
+        # Table styling
+        "table.header.color": "bold cyan",
+        "table.border.color": "blue",
+        "table.title.color": "bold blue",
+
+        # Status panel styling
+        "status.panel.border": "blue",
+        "status.key.color": "cyan",
+        "status.value.color": "magenta",
+
+        # Project summary styling
+        "summary.panel.border": "green",
+        "summary.title.color": "bold green",
+        "summary.workflow.color": "yellow",
+        "summary.location.color": "white",
+        "summary.directories.color": "white",
+        "summary.steps.color": "white",
+
+        # Panel and table styling
+        "panel.title.color": "bold blue",
+        "table.header": "bold cyan",
+        "table.body": "white",
+
+        # Help panel styling
+        "help.command.color": "green",
+        "help.description.color": "white",
+    }
+
     @classmethod
     def get_rich_style(cls, name: str) -> str:
         """Get a rich style by name."""
@@ -107,7 +162,7 @@ class Theme:
     @classmethod
     def get_color_map(cls) -> Dict[str, str]:
         """Get a mapping of semantic names to rich styles."""
-        return {
+        base_map = {
             "primary": cls.PRIMARY,
             "secondary": cls.SECONDARY,
             "accent": cls.ACCENT,
@@ -136,6 +191,12 @@ class Theme:
             "syntax.theme": cls.SYNTAX_THEME,
         }
 
+        # Add CLI theme tokens
+        cli_map = {k.replace("display.", "").replace("cli.", ""): v for k, v in cls.CLI.items()}
+        base_map.update(cli_map)
+
+        return base_map
+
     @classmethod
     def dashboard_theme(cls) -> Dict[str, str]:
         """Return dashboard theme tokens."""
@@ -155,6 +216,10 @@ class Theme:
     def header_theme(cls) -> Dict[str, str]:
         """Return header/context bar tokens."""
         return cls.HEADER_BAR.copy()
-
-
+    
+    @classmethod
+    def cli_theme(cls) -> Dict[str, str]:
+        """Return CLI-specific theme tokens."""
+        return cls.CLI.copy()
+    
 __all__ = ["Theme"]

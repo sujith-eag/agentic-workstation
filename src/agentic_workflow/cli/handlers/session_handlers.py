@@ -13,18 +13,17 @@ from agentic_workflow.core.exceptions import (
 )
 from agentic_workflow.services import ProjectService, WorkflowService
 from agentic_workflow.session.gate_checker import GateChecker
-from ..utils import (
-    display_success, display_project_summary, 
-    display_action_result, display_info
-)
+from ..display import display_success, display_project_summary, display_action_result, display_info
+from rich.console import Console
 
 logger = logging.getLogger(__name__)
 
 class SessionHandlers:
     """Handlers for session lifecycle management."""
 
-    def __init__(self, config=None):
-        """Initialize the SessionHandlers with optional config."""
+    def __init__(self, console: Console, config=None):
+        """Initialize the SessionHandlers with console and optional config."""
+        self.console = console
         self.config = config
         self.project_service = ProjectService(config)
         self.workflow_service = WorkflowService()
@@ -69,8 +68,8 @@ class SessionHandlers:
 
             # Display Rich Summary using actual root inventory
             directories = self._summarize_root_entries(result.target_path)
-            display_project_summary(project, workflow_type, directories, next_steps)
-            display_success(f"Project '{project}' initialized successfully")
+            display_project_summary(project, workflow_type, directories, next_steps, self.console)
+            display_success(f"Project '{project}' initialized successfully", self.console)
 
         except Exception as e:
             handle_error(e, "project initialization", {"project": project})
@@ -125,7 +124,8 @@ class SessionHandlers:
             display_action_result(
                 f"Agent '{agent_id}' activated",
                 True,
-                status_lines
+                console=self.console,
+                details=status_lines
             )
 
         except Exception as e:
@@ -150,8 +150,9 @@ class SessionHandlers:
             display_action_result(
                 f"Session ended for project '{project}'",
                 True,
-                [f"Archived agents: {result.get('archived_agents', 0)}", 
-                 f"Final status: {result.get('status', 'completed')}"]
+                console=self.console,
+                details=[f"Archived agents: {result.get('archived_agents', 0)}", 
+                         f"Final status: {result.get('status', 'completed')}"]
             )
 
         except Exception as e:

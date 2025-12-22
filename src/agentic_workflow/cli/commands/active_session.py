@@ -6,12 +6,14 @@ import click
 from rich_click import RichCommand
 from ..handlers.session_handlers import SessionHandlers
 from ..handlers.entry_handlers import EntryHandlers
-from ..utils import display_error
+from ..display import display_error
 from agentic_workflow.services import LedgerService
+from rich.console import Console
 
 # Initialize Handlers
-session_handlers = SessionHandlers()
-entry_handlers = EntryHandlers()
+console = Console()
+session_handlers = SessionHandlers(console)
+entry_handlers = EntryHandlers(console)
 
 @click.command(cls=RichCommand)
 @click.argument('agent_id')
@@ -28,7 +30,7 @@ def activate(ctx: click.Context, agent_id: str):
             
         session_handlers.handle_activate(agent_id=agent_id)
     except Exception as e:
-        display_error(f"Activation failed: {e}")
+        display_error(f"Activation failed: {e}", console)
 
 @click.command(cls=RichCommand)
 @click.option('--to', required=True, help='Target agent ID')
@@ -62,7 +64,7 @@ def handoff(ctx: click.Context, to: str, from_agent: str, artifacts: str, notes:
             notes=notes
         )
     except Exception as e:
-        display_error(f"Handoff failed: {e}")
+        display_error(f"Handoff failed: {e}", console)
 
 @click.command(cls=RichCommand, help="Record a key project decision.")
 @click.option('--title', required=True, help='Decision title')
@@ -82,7 +84,7 @@ def decision(ctx: click.Context, title: str, rationale: str, agent: str):
             agent=agent
         )
     except Exception as e:
-        display_error(f"Decision recording failed: {e}")
+        display_error(f"Decision recording failed: {e}", console)
 
 @click.command(cls=RichCommand, name='end', help="Archive the current session and reset state.")
 @click.pass_context
@@ -94,7 +96,7 @@ def end_session(ctx: click.Context):
     try:
         session_handlers.handle_end(project=project_name)
     except Exception as e:
-        display_error(f"Failed to end session: {e}")
+        display_error(f"Failed to end session: {e}", console)
 
 @click.command(cls=RichCommand, name='check-handoff')
 @click.argument('agent_id')
@@ -102,14 +104,14 @@ def end_session(ctx: click.Context):
 def check_handoff(ctx: click.Context, agent_id: str):
     """Check if a handoff exists for an agent."""
     from ..handlers.query_handlers import QueryHandlers
-    query_handlers = QueryHandlers()
+    query_handlers = QueryHandlers(console)
     config = ctx.obj.get('config')
     project_name = config.project.root_path.name if config and config.is_project_context else None
     
     try:
         query_handlers.handle_check_handoff(project=project_name, agent_id=agent_id)
     except Exception as e:
-        display_error(f"Handoff check failed: {e}")
+        display_error(f"Handoff check failed: {e}", console)
 
 @click.command(cls=RichCommand)
 @click.option('--target', required=True, help='Feedback target')
@@ -129,7 +131,7 @@ def feedback(ctx: click.Context, target: str, severity: str, summary: str):
             summary=summary
         )
     except Exception as e:
-        display_error(f"Feedback recording failed: {e}")
+        display_error(f"Feedback recording failed: {e}", console)
 
 @click.command(cls=RichCommand)
 @click.option('--title', required=True, help='Blocker title')
@@ -154,7 +156,7 @@ def blocker(ctx: click.Context, title: str, description: str, blocked_agents: st
             blocked_agents=blocked_agents_list
         )
     except Exception as e:
-        display_error(f"Blocker recording failed: {e}")
+        display_error(f"Blocker recording failed: {e}", console)
 
 @click.command(cls=RichCommand)
 @click.option('--trigger', required=True, help='What triggered the iteration')
@@ -179,7 +181,7 @@ def iteration(ctx: click.Context, trigger: str, impacted_agents: str, descriptio
             version_bump=version_bump
         )
     except Exception as e:
-        display_error(f"Iteration recording failed: {e}")
+        display_error(f"Iteration recording failed: {e}", console)
 
 @click.command(cls=RichCommand)
 @click.option('--assumption', required=True, help='The assumption text')
@@ -197,7 +199,7 @@ def assumption(ctx: click.Context, assumption: str, rationale: str):
             rationale=rationale
         )
     except Exception as e:
-        display_error(f"Assumption recording failed: {e}")
+        display_error(f"Assumption recording failed: {e}", console)
 
 
 __all__ = [

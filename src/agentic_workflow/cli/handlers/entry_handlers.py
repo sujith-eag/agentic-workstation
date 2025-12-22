@@ -14,7 +14,8 @@ from pathlib import Path
 
 from agentic_workflow.core.exceptions import CLIExecutionError, handle_error, validate_required
 from agentic_workflow.services import LedgerService
-from ..utils import display_action_result, display_success
+from ..display import display_action_result, display_success
+from rich.console import Console
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +27,10 @@ class EntryHandlers:
     with Click commands. No argparse.Namespace conversion required.
     """
 
-    def __init__(self):
+    def __init__(self, console: Console):
         """Initialize the EntryHandlers with required services."""
         self.ledger_service = LedgerService()
+        self.console = console
 
     def handle_handoff(
         self,
@@ -80,6 +82,7 @@ class EntryHandlers:
             display_action_result(
                 action=f"Handoff recorded: {from_agent} -> {to_agent}",
                 success=True,
+                console=self.console,
                 details=[f"Artifacts: {', '.join(artifact_list)}"] if artifact_list else None
             )
 
@@ -134,6 +137,7 @@ class EntryHandlers:
             display_action_result(
                 action=f"Decision recorded: {title}",
                 success=True,
+                console=self.console,
                 details=[f"Agent: {agent}"] if agent else None
             )
 
@@ -179,7 +183,7 @@ class EntryHandlers:
                 severity=severity,
                 summary=summary
             )
-            display_success(f"Feedback recorded for {target} (ID: {result['entry_id']})")
+            display_success(f"Feedback recorded for {target} (ID: {result['entry_id']})", self.console)
 
         except Exception as e:
             handle_error(e, "feedback recording", {"project": project, "target": target})
@@ -219,7 +223,7 @@ class EntryHandlers:
                 description=description,
                 version_bump=version_bump
             )
-            display_success(f"Iteration recorded: {trigger} (ID: {result['entry_id']})")
+            display_success(f"Iteration recorded: {trigger} (ID: {result['entry_id']})", self.console)
 
         except Exception as e:
             handle_error(e, "iteration recording", {"project": project, "trigger": trigger})
@@ -245,7 +249,7 @@ class EntryHandlers:
 
             # Placeholder - implement session logic
             logger.info(f"Recording session context for {agent} in project '{project}'")
-            display_success(f"Session context recorded for {agent}")
+            display_success(f"Session context recorded for {agent}", self.console)
 
         except Exception as e:
             handle_error(e, "session recording", {"project": project, "agent": agent})
@@ -285,7 +289,7 @@ class EntryHandlers:
                 assumption=assumption,
                 rationale=rationale
             )
-            display_success(f"Assumption recorded (ID: {result['entry_id']})")
+            display_success(f"Assumption recorded (ID: {result['entry_id']})", self.console)
 
         except Exception as e:
             handle_error(e, "assumption recording", {"project": project})
@@ -328,7 +332,7 @@ class EntryHandlers:
                 description=description,
                 blocked_agents=blocked_agents
             )
-            display_success(f"Blocker recorded: {title} (ID: {result['entry_id']})")
+            display_success(f"Blocker recorded: {title} (ID: {result['entry_id']})", self.console)
 
         except Exception as e:
             handle_error(e, "blocker recording", {"project": project, "title": title})

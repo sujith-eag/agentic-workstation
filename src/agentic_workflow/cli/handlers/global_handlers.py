@@ -7,12 +7,17 @@ from typing import Optional
 import logging
 
 from agentic_workflow.core.exceptions import AgenticWorkflowError
-from ..utils import display_info, display_error, display_help_panel
+from ..display import display_info, display_error, display_help_panel
+from rich.console import Console
 
 logger = logging.getLogger(__name__)
 
 class GlobalHandlers:
     """Handlers for global CLI commands."""
+
+    def __init__(self, console: Console):
+        """Initialize the GlobalHandlers with console."""
+        self.console = console
 
     def handle_list_workflows(self) -> None:
         """List available workflow types."""
@@ -22,7 +27,7 @@ class GlobalHandlers:
         try:
             workflows = workflow_service.list_workflows()
             if not workflows:
-                display_info("No workflows found")
+                display_info("No workflows found", self.console)
                 return
 
             commands = []
@@ -34,10 +39,10 @@ class GlobalHandlers:
                 except Exception:
                     commands.append({'command': workflow['name'], 'description': "Error loading info"})
 
-            display_help_panel("Available Workflows", commands)
+            display_help_panel("Available Workflows", commands, self.console)
 
         except Exception as e:
-            display_error(f"Failed to list workflows: {e}")
+            display_error(f"Failed to list workflows: {e}", self.console)
 
     def handle_config(self, edit: bool = False) -> None:
         """Show or edit global configuration."""
@@ -55,15 +60,15 @@ class GlobalHandlers:
                 editor = "code" 
                 subprocess.run([editor, str(config_path)])
             except Exception as e:
-                display_error(f"Failed to open editor: {e}")
+                display_error(f"Failed to open editor: {e}", self.console)
         else:
             if config_path.exists():
                 with open(config_path) as f:
                     content = f.read()
-                display_info(f"Global config at: {config_path}")
-                display_info(content)
+                display_info(f"Global config at: {config_path}", self.console)
+                display_info(content, self.console)
             else:
-                display_info("No global config found. Run 'agentic init' inside a folder to set it up.")
+                display_info("No global config found. Run 'agentic init' inside a folder to set it up.", self.console)
 
 
 __all__ = ["GlobalHandlers"]

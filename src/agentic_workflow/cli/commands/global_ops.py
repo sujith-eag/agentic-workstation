@@ -5,10 +5,12 @@ Focus: Bootstrap and System Config (Init, Config, Workflows).
 import click
 from ..handlers.session_handlers import SessionHandlers
 from ..handlers.global_handlers import GlobalHandlers
-from ..utils import display_error
+from ..display import display_error
+from rich.console import Console
 
-session_handlers = SessionHandlers()
-global_handlers = GlobalHandlers()
+console = Console()
+session_handlers = SessionHandlers(console)
+global_handlers = GlobalHandlers(console)
 
 @click.command()
 @click.argument('project')
@@ -26,7 +28,7 @@ def init(project: str, workflow: str, description: str, force: bool):
             force=force
         )
     except Exception as e:
-        display_error(f"Initialization failed: {e}")
+        display_error(f"Initialization failed: {e}", console)
 
 @click.command(name='workflows')
 def list_workflows():
@@ -34,7 +36,7 @@ def list_workflows():
     try:
         global_handlers.handle_list_workflows()
     except Exception as e:
-        display_error(f"Failed to list workflows: {e}")
+        display_error(f"Failed to list workflows: {e}", console)
 
 @click.command()
 @click.option('--edit', '-e', is_flag=True, help='Open config in default editor')
@@ -43,7 +45,7 @@ def config(edit: bool):
     try:
         global_handlers.handle_config(edit=edit)
     except Exception as e:
-        display_error(f"Config operation failed: {e}")
+        display_error(f"Config operation failed: {e}", console)
 
 
 __all__ = ["init", "list_workflows", "config"]

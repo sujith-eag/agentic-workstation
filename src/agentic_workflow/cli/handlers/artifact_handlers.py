@@ -22,6 +22,10 @@ class ArtifactHandlers:
             if file_path.is_file():
                 relative_path = file_path.relative_to(artifacts_dir)
                 artifacts.append((file_path, str(relative_path)))
+        
+        # Sort artifacts by relative path for consistent ordering
+        artifacts.sort(key=lambda x: x[1])
+        
         return artifacts
 
     def read_artifact(self, file_path: Path) -> str:

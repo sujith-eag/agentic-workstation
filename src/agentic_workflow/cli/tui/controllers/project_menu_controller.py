@@ -7,9 +7,10 @@ This module contains the controller for project context menu operations.
 from questionary import Choice
 
 from .base_controller import BaseController
-from ...ui_utils import get_agentic_ascii_art
+from ..branding import display_context_header
 from ..ui import InputResult
 from ..views import DashboardView
+from ..types import ContextState
 
 
 class ProjectMenuController(BaseController):
@@ -17,8 +18,8 @@ class ProjectMenuController(BaseController):
 
     def execute(self, *args, **kwargs) -> str:
         """Execute the project menu and return the selected action."""
-        # Display AGENTIC ASCII art centered with tighter spacing
-        self.console.print(get_agentic_ascii_art(), style=self.theme.ASCII_ART, justify="left")
+        # Display AGENTIC header
+        display_context_header("Project", self.console, theme_map=self.theme.get_color_map())
 
         project_name = self.app.project_root.name if self.app.project_root else "Unknown"
 
@@ -73,7 +74,7 @@ class ProjectMenuController(BaseController):
         try:
             self.app.query_handlers.handle_list_pending(project=project_name)
         except Exception as e:
-            self.app.error_view.display_error_modal(str(e))
+            self.feedback.error(f"Failed to list pending handoffs: {e}")
         
         self.input_handler.wait_for_user()
 
@@ -85,7 +86,7 @@ class ProjectMenuController(BaseController):
         try:
             self.app.query_handlers.handle_list_blockers(project=project_name)
         except Exception as e:
-            self.app.error_view.display_error_modal(str(e))
+            self.feedback.error(f"Failed to list blockers: {e}")
         
         self.input_handler.wait_for_user()
 
@@ -102,12 +103,12 @@ class ProjectMenuController(BaseController):
             self.feedback.error("Navigation controller not initialized.")
             self.input_handler.wait_for_user()
 
-    def run_menu(self) -> str:
+    def run_menu(self) -> ContextState:
         """Run the complete project menu loop and return context change."""
         choice = self.execute()
 
         if choice is None or choice == InputResult.EXIT:
-            return "global"  # Exit project context on cancel/ctrl+C
+            return ContextState.GLOBAL  # Exit project context on cancel/ctrl+C
         elif choice == "status":
             self.execute_workflow_status()
         elif choice == "agents":
@@ -121,7 +122,7 @@ class ProjectMenuController(BaseController):
         elif choice == "navigate":
             self.execute_project_navigation()
 
-        return "project"  # Stay in project context
+        return ContextState.PROJECT  # Stay in project context
 
 
 __all__ = ["ProjectMenuController"]

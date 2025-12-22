@@ -29,7 +29,7 @@ try:
 except ImportError:
     jsonschema = None
 
-from agentic_workflow.cli.utils import display_error, display_warning, display_info, display_success
+from agentic_workflow.cli.display import display_error, display_warning, display_info, display_success
 from agentic_workflow.generation.canonical_loader import load_canonical_workflow, get_canonical_dir
 
 # Resolve paths

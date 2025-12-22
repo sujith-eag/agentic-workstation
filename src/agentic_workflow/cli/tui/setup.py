@@ -17,8 +17,9 @@ from agentic_workflow.core.schema import SystemConfig
 from agentic_workflow.core.exceptions import ConfigError
 
 # Import UI utilities
-from agentic_workflow.cli.ui_utils import get_agentic_ascii_art
-from .ui import InputHandler, InputResult, FeedbackPresenter, Theme
+from .branding import display_context_header
+from agentic_workflow.cli.theme import Theme
+from .ui import InputHandler, InputResult, FeedbackPresenter
 
 console: Optional[Console] = None
 
@@ -40,7 +41,7 @@ def run_setup_wizard(
     global console
     console = console_override or console or Console()
     theme = Theme
-    input_handler = input_handler or InputHandler(console)
+    input_handler = input_handler or InputHandler(console, feedback)
     feedback = feedback or FeedbackPresenter(console, theme_map=theme.feedback_theme())
     # For testing: auto-setup with defaults
     if os.environ.get('AGENTIC_AUTO_SETUP'):
@@ -51,21 +52,21 @@ def run_setup_wizard(
             "check_updates": True,
             "log_level": "INFO"
         }
-        _save_config(config_data)
-        _ensure_workspace_exists(Path(config_data['default_workspace']).expanduser())
+        _save_config(config_data, feedback)
+        _ensure_workspace_exists(Path(config_data['default_workspace']).expanduser(), feedback)
         feedback.success("Auto-setup complete!")
         return
 
     console.clear()
 
-    # Display AGENTIC ASCII art
-    console.print(get_agentic_ascii_art(), style="bold cyan", justify="center")
-    console.print()
+    # Display AGENTIC header
+    display_context_header("Global", console, theme_map=theme.get_color_map())
+    console.print(Text(f"Press Ctrl+C or choose Cancel / Exit at any prompt to abort setup.\n", style=theme.DIM))
 
     # 1. Welcome UI
-    welcome = Text("Welcome to Agentic Workflow OS\n", style="bold blue")
-    welcome.append("Let's set up your environment.", style="dim")
-    console.print(Panel(welcome, border_style="blue", title="First-Run Setup"))
+    welcome = Text("Welcome to Agentic Workflow OS\n", style=theme.HEADER)
+    welcome.append("Let's set up your environment.", style=theme.DIM)
+    console.print(Panel(welcome, border_style=theme.BORDER, title="First-Run Setup"))
 
     try:
         # 2. Workspace Selection
@@ -134,19 +135,19 @@ def run_setup_wizard(
         }
 
         console.print()
-        console.print("[bold]Configuration Summary:[/bold]")
-        console.print(f"  • Projects Location: [cyan]{config_data['default_workspace']}[/cyan]")
-        console.print(f"  • Default Editor:    [cyan]{config_data['editor_command']}[/cyan]")
+        console.print("Configuration Summary:", style=theme.BOLD)
+        console.print(f"  • Projects Location: {config_data['default_workspace']}", style=theme.INFO_TEXT)
+        console.print(f"  • Default Editor:    {config_data['editor_command']}", style=theme.INFO_TEXT)
         console.print()
 
         confirm = input_handler.get_confirmation("Save configuration and continue?", default=True)
         if confirm == InputResult.EXIT:
-            console.print("[yellow]Setup cancelled.[/yellow]")
+            feedback.warning("Setup cancelled.")
             return
 
         if confirm:
-            _save_config(config_data)
-            _ensure_workspace_exists(Path(workspace_path))
+            _save_config(config_data, feedback)
+            _ensure_workspace_exists(Path(workspace_path), feedback)
 
             feedback.success("Setup complete!")
             console.print("Launching application...\n")
@@ -163,7 +164,7 @@ def run_setup_wizard(
         sys.exit(1)
 
 
-def _save_config(data: dict) -> None:
+def _save_config(data: dict, feedback: FeedbackPresenter) -> None:
     """Serialize config to YAML with validation."""
     try:
         # Validate against schema before saving
@@ -182,16 +183,18 @@ def _save_config(data: dict) -> None:
             yaml.dump(config_dict, f, default_flow_style=False)
             
     except Exception as e:
-        console.print(f"[bold red]Error saving configuration:[/bold red] {e}")
+        feedback.error(f"Error saving configuration: {e}")
         raise ConfigError(f"Failed to save configuration: {e}")
-def _ensure_workspace_exists(path: Path) -> None:
+
+
+def _ensure_workspace_exists(path: Path, feedback: FeedbackPresenter) -> None:
     """Create the workspace directory if it doesn't exist"""
     try:
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
-            console.print(f"[dim]Created workspace directory: {path}[/dim]")
+            feedback.info(f"Created workspace directory: {path}")
     except Exception as e:
-        console.print(f"[yellow]Warning: Could not create workspace directory: {e}[/yellow]")
+        feedback.warning(f"Could not create workspace directory: {e}")
 
 
 __all__ = ["run_setup_wizard"]

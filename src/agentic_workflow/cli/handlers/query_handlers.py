@@ -15,16 +15,12 @@ import logging
 from pathlib import Path
 
 from agentic_workflow.core.exceptions import handle_error, validate_required
+from agentic_workflow.core.paths import find_project_root
 from agentic_workflow.services import LedgerService, ProjectService
-from ..utils import (
-    display_action_result,
-    display_error,
-    display_info,
-    display_status_panel,
-    display_warning,
-    shorten_path,
-)
+from ..formatting import shorten_path
 from ..ui_utils import format_output
+from ..display import display_action_result, display_error, display_info, display_status_panel, display_warning
+from rich.console import Console
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +42,9 @@ class ProjectInventory(TypedDict):
 class QueryHandlers:
     """Handlers for query-related CLI commands."""
 
-    def __init__(self):
+    def __init__(self, console: Console):
         """Initialize the QueryHandlers with required services."""
+        self.console = console
         self.ledger_service = LedgerService()
         self.project_service = ProjectService()
 
@@ -65,14 +62,21 @@ class QueryHandlers:
         status_data = self.project_service.get_project_status(project)
         if status_data.get("status") == "found":
             status_result = status_data.get("config", {})
+            # Add current stage to status
+            status_result["stage"] = self.project_service._get_current_stage(project)
 
         session_data = self.ledger_service.get_active_session(project) or {}
+        recent_activity = self.ledger_service.get_recent_activity(project, limit=5) or []
+        
+        # Set last action from most recent activity if available
+        last_action = "No recent activity"
+        if recent_activity:
+            last_action = recent_activity[0].get('summary', 'Recent activity')
+        
         session_context = {
             "active_agent": session_data.get("agent_id"),
-            "last_action": session_data.get("last_action", "No recent activity"),
+            "last_action": last_action,
         }
-
-        recent_activity = self.ledger_service.get_recent_activity(project, limit=5) or []
 
         return {
             "status": status_result,
@@ -119,9 +123,9 @@ class QueryHandlers:
                 if status_check['status'] == 'found':
                     project = status_check['name']
                 else:
-                    display_error("Not in a project directory")
-                    display_info(f"Current location: {shorten_path(str(Path.cwd()))}")
-                    display_info("Use 'agentic init <name>' to create a new project")
+                    display_error("Not in a project directory", self.console)
+                    display_info(f"Current location: {shorten_path(str(Path.cwd()), project_root=find_project_root(), cwd=Path.cwd())}", self.console)
+                    display_info("Use 'agentic init <name>' to create a new project", self.console)
                     return
 
             logger.info(f"Getting status for project '{project}'")
@@ -133,11 +137,11 @@ class QueryHandlers:
             config_status = self.project_service.get_project_status(project)
 
             # Combine or prioritize (Displaying Ledger Status in the panel)
-            display_status_panel(project, ledger_status)
+            display_status_panel(project, ledger_status, self.console)
             
             # Optionally show warnings from config status
             if config_status.get('status') == 'found' and not config_status.get('config'):
-                 display_info("[Warning] Project configuration file is missing/invalid.")
+                 display_info("[Warning] Project configuration file is missing/invalid.", self.console)
 
         except Exception as e:
             handle_error(e, "status retrieval", {"project": project})
@@ -162,10 +166,11 @@ class QueryHandlers:
                 display_action_result(
                     action=f"Handoff available from {from_agent}",
                     success=True,
+                    console=self.console,
                     details=[f"Target: {agent_id}", f"Status: {latest_handoff.get('status', 'pending')}"]
                 )
             else:
-                display_warning(f"No pending handoff found for {agent_id}")
+                display_warning(f"No pending handoff found for {agent_id}", self.console)
             
         except Exception as e:
             handle_error(e, "handoff check", {"project": project, "agent_id": agent_id})
@@ -190,9 +195,9 @@ class QueryHandlers:
             pending_handoffs = self.ledger_service.get_pending_handoffs(project)
             
             if pending_handoffs:
-                format_output(pending_handoffs, format_type='table', title=f"Pending Handoffs in '{project}'")
+                format_output(pending_handoffs, format_type='table', title=f"Pending Handoffs in '{project}'", console=self.console)
             else:
-                display_info("No pending handoffs.")
+                display_info("No pending handoffs.", self.console)
 
         except Exception as e:
             handle_error(e, "pending handoffs listing", {"project": project})
@@ -217,9 +222,9 @@ class QueryHandlers:
             active_blockers = self.ledger_service.get_active_blockers(project)
             
             if active_blockers:
-                format_output(active_blockers, format_type='table', title=f"Active Blockers in '{project}'")
+                format_output(active_blockers, format_type='table', title=f"Active Blockers in '{project}'", console=self.console)
             else:
-                display_info("No active blockers.")
+                display_info("No active blockers.", self.console)
 
         except Exception as e:
             handle_error(e, "blockers listing", {"project": project})

@@ -9,9 +9,7 @@ import sys
 from pathlib import Path
 import yaml
 
-from agentic_workflow.cli.utils import display_error, display_success
-
-from agentic_workflow.cli.utils import display_error, display_success, display_info
+from agentic_workflow.cli.display import display_error, display_success, display_info
 
 __all__ = ["validate_init", "validate_activate", "validate_populate", "validate_end", "validate_update_index", "validate_check_handoff"]
 

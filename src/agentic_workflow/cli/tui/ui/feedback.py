@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from .theme import Theme
+from agentic_workflow.cli.theme import Theme
 
 
 class FeedbackPresenter:

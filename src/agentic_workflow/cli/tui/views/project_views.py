@@ -93,19 +93,19 @@ class ProjectSummaryView(BaseView):
         next_steps = data.get('next_steps', [])
 
         # Header
-        self.console.print(f"\n[bold green]Project '{project_name}' created successfully![/bold green]")
-        self.console.print(f"[dim]Workflow: {workflow_type}[/dim]\n")
+        self.console.print(f"\nProject '{project_name}' created successfully!", style=self.theme_map.get("success", "bold green"))
+        self.console.print(f"Workflow: {workflow_type}\n", style=self.theme_map.get("dim", "dim"))
 
         # Directories section
         if directories:
-            self.console.print("[bold cyan]Project Structure:[/bold cyan]")
+            self.console.print("Project Structure:", style=self.theme_map.get("subheader", "bold cyan"))
             for directory in directories:
                 self.console.print(f"  • {directory}/")
             self.console.print()
 
         # Next steps section
         if next_steps:
-            self.console.print("[bold cyan]Next Steps:[/bold cyan]")
+            self.console.print("Next Steps:", style=self.theme_map.get("subheader", "bold cyan"))
             for step in next_steps:
                 self.console.print(f"  {step}")
             self.console.print()

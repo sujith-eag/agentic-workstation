@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from typing import Iterator
 from rich.console import Console
 
-from .theme import Theme
+from agentic_workflow.cli.theme import Theme
 
 
 class ProgressPresenter:

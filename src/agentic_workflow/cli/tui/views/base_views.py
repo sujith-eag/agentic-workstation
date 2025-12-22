@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional, Dict
 from rich.console import Console
 
-from ..ui import Theme
+from agentic_workflow.cli.theme import Theme
 
 __all__ = ["BaseView"]
 

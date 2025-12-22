@@ -6,13 +6,26 @@ Role: Context Router. Directs commands to specific operations modules.
 import sys
 import click
 from rich.console import Console
-from rich_click import RichGroup
+from rich_click import RichGroup, RichHelpConfiguration, rich_config
 
 from agentic_workflow import __version__
 from agentic_workflow.core.config_service import ConfigurationService
 from agentic_workflow.core.schema import RuntimeConfig
 from agentic_workflow.core.exceptions import AgenticWorkflowError
-from agentic_workflow.cli.utils import display_error, setup_logging
+from agentic_workflow.cli.ui_utils import setup_logging
+from agentic_workflow.cli.display import display_error, exit_with_error
+from agentic_workflow.cli.theme import Theme
+
+# Configure rich_click to use application theme
+theme_map = Theme.get_color_map()
+rich_click_config = RichHelpConfiguration(
+    style_option=theme_map.get('help.command.color', 'green'),
+    style_command=theme_map.get('help.command.color', 'green'),
+    style_metavar=theme_map.get('help.description.color', 'white'),
+    style_metavar_separator=theme_map.get('help.description.color', 'white'),
+)
+
+console = Console()
 
 # Import New Command Modules (Phase 2)
 from agentic_workflow.cli.commands import global_ops
@@ -91,6 +104,7 @@ def show_version(ctx, param, value):
 
 
 @click.group(cls=ContextAwareGroup, invoke_without_command=True)
+@rich_config(help_config=rich_click_config)
 @click.option('--version', is_flag=True, callback=show_version, expose_value=False, help='Show version')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
 @click.option('--force', '-f', is_flag=True, help='Force operations (bypass safety checks)')
@@ -144,11 +158,9 @@ if __name__ == "__main__":
     try:
         cli()
     except AgenticWorkflowError as e:
-        display_error(str(e))
-        sys.exit(1)
+        exit_with_error(str(e), console)
     except Exception as e:
-        display_error(f"Unexpected system error: {e}")
-        sys.exit(1)
+        exit_with_error(f"Unexpected system error: {e}", console)
 
 
 __all__ = ["cli"]

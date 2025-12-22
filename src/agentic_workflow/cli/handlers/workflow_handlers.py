@@ -7,15 +7,17 @@ import logging
 from ...core.exceptions import CLIExecutionError, handle_error, validate_required
 from ...session.stage_manager import set_stage
 from ...session.gate_checker import GateChecker
-from ..utils import display_action_result, display_success, display_error
+from ..display import display_action_result, display_success, display_error
+from rich.console import Console
 
 logger = logging.getLogger(__name__)
 
 class WorkflowHandlers:
     """Handlers for advanced workflow operations."""
 
-    def __init__(self, config=None):
-        """Initialize the WorkflowHandlers with optional config."""
+    def __init__(self, console: Console, config=None):
+        """Initialize the WorkflowHandlers with console and optional config."""
+        self.console = console
         self.config = config
         from agentic_workflow.services import WorkflowService
         self.workflow_service = WorkflowService()
@@ -47,9 +49,9 @@ class WorkflowHandlers:
             result = set_stage(project, stage)
             
             if result['success']:
-                display_success(f"Stage changed: {result.get('previous', 'None')} → {result['current']}")
+                display_success(f"Stage changed: {result.get('previous', 'None')} → {result['current']}", self.console)
             else:
-                display_error(f"Failed to set stage: {result['error']}")
+                display_error(f"Failed to set stage: {result['error']}", self.console)
 
         except Exception as e:
             handle_error(e, "stage setting", {"project": project, "stage": stage})
@@ -69,7 +71,7 @@ class WorkflowHandlers:
             result = gate_checker.check_gate(project, None)
             
             if result.passed:
-                display_success(f"Gate check passed for project '{project}'")
+                display_success(f"Gate check passed for project '{project}'", self.console)
             else:
                 # Display violations
                 violation_messages = []
@@ -77,9 +79,9 @@ class WorkflowHandlers:
                     message = violation.get('message', 'Unknown violation')
                     violation_messages.append(message)
                 if violation_messages:
-                    display_error(f"Gate check failed for project '{project}': {'; '.join(violation_messages)}")
+                    display_error(f"Gate check failed for project '{project}': {'; '.join(violation_messages)}", self.console)
                 else:
-                    display_error(f"Gate check failed for project '{project}': Unknown reasons")
+                    display_error(f"Gate check failed for project '{project}': Unknown reasons", self.console)
                     
         except Exception as e:
             handle_error(e, "gate check", {"project": project})

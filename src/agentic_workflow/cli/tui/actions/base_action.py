@@ -5,7 +5,7 @@ This module defines the abstract base class for all actions in the TUI.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class BaseAction(ABC):
@@ -29,14 +29,14 @@ class BaseAction(ABC):
         pass
 
     @abstractmethod
-    def execute(self, context: Dict[str, Any]) -> Any:
+    def execute(self, context: Dict[str, Any]) -> Optional[bool]:
         """Execute the action with the given context.
 
         Args:
             context: Dictionary containing execution context (project_name, etc.)
 
         Returns:
-            Any result from the action execution
+            True if action succeeded, False if failed, None if cancelled
         """
         pass
 

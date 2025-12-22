@@ -1,6 +1,6 @@
 # Agentic Workflow OS CLI & TUI Reference
 
-**Version:** 1.0.9
+**Version:** 1.0.10
 **Generated:** December 15, 2025
 **Source:** Code Review Analysis & CLI Implementation
 
@@ -283,4 +283,4 @@ Available commands change based on context. Use `agentic --help` to see what's a
 
 ---
 
-*This documentation covers both CLI and TUI interfaces for the Agentic Workflow OS. Last updated: December 21, 2025*
+*This documentation covers both CLI and TUI interfaces for the Agentic Workflow OS. Last updated: December 23, 2025*

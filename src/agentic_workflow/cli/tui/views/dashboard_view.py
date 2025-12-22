@@ -96,9 +96,9 @@ class DashboardView(BaseView):
         )
         
         # Define columns with explicit ratios/widths for responsiveness
-        table.add_column("Time", style="dim", width=16, no_wrap=True)
+        table.add_column("Time", style=self.theme_map.get("dim", "dim"), width=16, no_wrap=True)
         table.add_column("Type", width=10)
-        table.add_column("Summary", style="white", ratio=1, overflow="fold") # Fold long text
+        table.add_column("Summary", style=self.theme_map.get("body", "white"), ratio=1, overflow="fold") # Fold long text
 
         if not activity:
             # Handle empty state gracefully

@@ -15,7 +15,7 @@ import os
 import sys
 from typing import List, Tuple, Dict
 import re
-from agentic_workflow.cli.utils import display_error, display_warning, display_info
+from agentic_workflow.cli.display import display_error, display_warning, display_info
 
 try:
     import yaml

@@ -18,9 +18,11 @@ from ..handlers import (
     QueryHandlers,
     ArtifactHandlers,
 )
-from .ui import LayoutManager, InputHandler, Theme, FeedbackPresenter, ProgressPresenter
+from agentic_workflow.cli.theme import Theme
+from .ui import LayoutManager, InputHandler, FeedbackPresenter, ProgressPresenter
 from agentic_workflow.core.exceptions import AgenticWorkflowError
 from agentic_workflow import __version__
+from .types import ContextState
 
 
 @dataclass
@@ -41,7 +43,7 @@ class TUIApp:
     def __init__(self, config=None):
         """Initialize the TUI application with configuration."""
         self.config = config
-        self.current_context = "project" if config and config.is_project_context else "global"
+        self.current_context: ContextState = ContextState.PROJECT if config and config.is_project_context else ContextState.GLOBAL
         self.project_root = config.project.root_path if config and config.project else None
         self.console = Console()
         self.layout = LayoutManager(self.console, theme_map=Theme.get_color_map())
@@ -58,11 +60,11 @@ class TUIApp:
             progress=self.progress,
         )
         # Note: session_context removed - controllers now fetch fresh data from handlers
-        self.project_handlers = ProjectHandlers()
-        self.workflow_handlers = WorkflowHandlers()
-        self.session_handlers = SessionHandlers(config)
-        self.entry_handlers = EntryHandlers()
-        self.query_handlers = QueryHandlers()
+        self.project_handlers = ProjectHandlers(self.console)
+        self.workflow_handlers = WorkflowHandlers(self.console, config)
+        self.session_handlers = SessionHandlers(self.console, config)
+        self.entry_handlers = EntryHandlers(self.console)
+        self.query_handlers = QueryHandlers(self.console)
         self.artifact_handlers = ArtifactHandlers()
         
         # Initialize controllers
@@ -94,7 +96,7 @@ class TUIApp:
     def run(self):
         """Main TUI loop"""
         try:
-            if self.current_context == "global":
+            if self.current_context == ContextState.GLOBAL:
                 # Global menu handles its own loop and exits when done
                 self.global_menu_controller.run_menu()
                 return  # Exit after global menu completes
@@ -102,8 +104,8 @@ class TUIApp:
                 # Project menu loop
                 while True:
                     new_context = self.project_menu_controller.run_menu()
-                    if new_context == "global":
-                        self.current_context = "global"
+                    if new_context == ContextState.GLOBAL:
+                        self.current_context = ContextState.GLOBAL
                         self.project_root = None
                         break  # Go back to global
         except KeyboardInterrupt:

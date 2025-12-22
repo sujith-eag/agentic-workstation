@@ -1,7 +1,7 @@
 # Agentic Workflow OS: CLI Architecture Reference
 
-**Version:** 2.0 (Release Candidate)
-**Status:** Stable / Governance Enforced
+**Version:** 2.1 (Production Release)
+**Status:** Stable / Governance Enforced / Theme Integrated / CLI-TUI Consistency Achieved
 **Scope:** Command Line Interface, Context Routing, and Request Handlers.
 
 ## 1. Architectural Overview
@@ -20,11 +20,18 @@ graph TD
     Services --> Ledger[Ledger I/O (Persistence)]
 ````
 
-1.  **Router (`main.py`):** The entry point detector. It identifies the directory context (Global vs. Project) and modifies the `ContextAwareGroup` to expose relevant commands.
+1.  **Router (`main.py`):** The entry point detector with **integrated theming**. It identifies the directory context (Global vs. Project) and modifies the `ContextAwareGroup` to expose relevant commands. **Rich Click integration** provides consistent help formatting using application theme colors.
 2.  **Commands (`cli/commands/`):** Pure `click` definitions responsible for argument parsing and UI rendering via `rich`. These modules contain **ZERO** business logic.
 3.  **Handlers (`handlers/`):** The application bridge. They orchestrate Service calls, handle exceptions, and route data to the logic layer.
 4.  **Governance (`core/governance.py`):** An interceptor layer that enforces rules (Strict/Moderate) before allowing state-changing operations.
 5.  **Services:** The core engine components (`ProjectService`, `LedgerService`) managing the domain logic.
+
+### Key Architectural Achievements
+
+- **Theme Integration**: Rich Click help system uses application theme colors for consistent CLI appearance
+- **Clean Separation**: Zero business logic in command modules; all operations routed through handlers
+- **Context Awareness**: Dynamic command exposure based on project vs global context
+- **Error Consistency**: Standardized error handling and display across all commands
 
 -----
 
@@ -45,6 +52,15 @@ To enhance usability, internal function names are mapped to intuitive CLI verbs:
   * `end_session` → `end`
   * `list_pending_handoffs` → `list-pending`
   * `list_active_blockers` → `list-blockers`
+
+### Theming Integration
+
+The CLI integrates with the application theme system to provide consistent visual appearance:
+
+- **Rich Click Configuration**: Help text and command formatting uses theme colors from `Theme.get_color_map()`
+- **Configuration**: Applied at startup in `main.py` via `RichHelpConfiguration`
+- **Theme Elements**: Command colors, option colors, and description colors all sourced from the theme
+- **Consistency**: CLI help appearance matches TUI theming for unified user experience
 
 -----
 
@@ -178,6 +194,18 @@ if config.is_project_context:
   * **Context:** Occurs during `activate` or `handoff`.
   * **Cause:** The `GateChecker` has identified a violation (e.g., missing artifact, no prerequisite handoff) while the project is in Strict Mode.
   * **Fix:** Resolve the missing requirement or switch to Moderate Mode in `.agentic/config.yaml`.
+
+### Theme Integration Issues
+
+  * **Context:** CLI help text appears with default colors instead of theme colors.
+  * **Cause:** Rich Click configuration not applied or theme loading failed.
+  * **Fix:** Verify `Theme.get_color_map()` returns valid colors and `RichHelpConfiguration` is properly initialized in `main.py`.
+
+### Context Detection Problems
+
+  * **Context:** Wrong commands available or "Command not found" errors.
+  * **Cause:** Context detection logic in `ContextAwareGroup.list_commands()` failing.
+  * **Fix:** Check if `.agentic` directory exists and `config.is_project_context` is set correctly.
 
 ### "Command not found"
 

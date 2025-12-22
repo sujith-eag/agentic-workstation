@@ -39,7 +39,7 @@ from agentic_workflow.generation.denormalizer import (
 )
 from agentic_workflow.generation.yaml_writer import write_all_yaml
 
-from agentic_workflow.cli.utils import display_info, display_error, display_success
+from agentic_workflow.cli.display import display_info, display_error, display_success
 
 # Output directory
 WORKFLOWS_DIR = Path(__file__).resolve().parents[2] / "manifests" / "workflows"

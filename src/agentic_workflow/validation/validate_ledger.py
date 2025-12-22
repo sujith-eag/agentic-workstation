@@ -10,7 +10,7 @@ import sys
 import argparse
 from pathlib import Path
 import yaml
-from agentic_workflow.cli.utils import display_error
+from agentic_workflow.cli.display import display_error
 
 __all__ = ["validate_handoff", "validate_workflow_handoff", "validate_feedback", "validate_iteration"]
 

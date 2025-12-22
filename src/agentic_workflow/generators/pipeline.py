@@ -365,6 +365,7 @@ class InitPipeline:
             if isinstance(agents, dict):
                 agents = agents.get('agents', [])
             agent_map = {a.get('id'): a.get('slug', a.get('id', '').replace('-', '_')) for a in agents}
+            agent_type_map = {a.get('id'): a.get('agent_type', 'core') for a in agents}
             
             artifacts_dir = project_model.root_path / 'artifacts'
             
@@ -377,6 +378,10 @@ class InitPipeline:
                 description = artifact.get('description', 'No description provided.')
                 
                 if not filename or not owner:
+                    continue
+                
+                # Skip orchestrator artifacts - they are handled in _generate_runtime_state
+                if agent_type_map.get(owner) == 'orchestrator':
                     continue
                     
                 # Get agent slug for directory naming

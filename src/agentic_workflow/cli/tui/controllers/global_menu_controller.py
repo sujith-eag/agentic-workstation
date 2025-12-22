@@ -7,8 +7,9 @@ This module contains the controller for global context menu operations.
 from questionary import Choice
 
 from .base_controller import BaseController
-from ...ui_utils import get_agentic_ascii_art
-from ..ui import InputResult, Theme
+from ..branding import display_context_header
+from agentic_workflow.cli.theme import Theme
+from ..ui import InputResult
 
 
 class GlobalMenuController(BaseController):
@@ -16,22 +17,8 @@ class GlobalMenuController(BaseController):
 
     def execute(self, *args, **kwargs) -> str:
         """Execute the global menu and return the selected action."""
-        # Create menu content; layout will clear
-        ascii_art = get_agentic_ascii_art()
-
-        from rich.text import Text
-
-        # Style the ASCII art
-        styled_ascii_art = Text(ascii_art.strip(), style=self.theme.get_color_map().get("ascii_art", "cyan"))
-
-        # Use layout manager to render
-        self.layout.render_screen(
-            styled_ascii_art,
-            title="Agentic Workflow OS - Global Mode",
-            subtitle="Project Management & Creation",
-            footer_text="",
-            clear=False
-        )
+        # Display the AGENTIC header
+        display_context_header("Global", self.console, theme_map=self.theme.get_color_map())
 
         # Menu options
         choice = self.input_handler.get_selection(

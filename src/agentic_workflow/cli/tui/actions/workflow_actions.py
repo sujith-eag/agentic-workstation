@@ -4,7 +4,7 @@ Workflow action classes for the Command Pattern implementation.
 This module contains concrete action classes for agent operations.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from questionary import Choice
 
 from .base_action import BaseAction
@@ -21,7 +21,7 @@ class ActivateAgentAction(BaseAction):
     def get_description(self) -> str:
         return "Activate an agent for the current workflow session"
 
-    def execute(self, context: Dict[str, Any]) -> Any:
+    def execute(self, context: Dict[str, Any]) -> Optional[bool]:
         """Execute the activate agent action."""
         project_name = context.get('project_name', 'Unknown')
 
@@ -52,7 +52,7 @@ class HandoffAction(BaseAction):
     def get_description(self) -> str:
         return "Record a handoff between agents with artifacts and notes"
 
-    def execute(self, context: Dict[str, Any]) -> Any:
+    def execute(self, context: Dict[str, Any]) -> Optional[bool]:
         """Execute the handoff action."""
         project_name = context.get('project_name', 'Unknown')
 
@@ -113,7 +113,7 @@ class DecisionAction(BaseAction):
     def get_description(self) -> str:
         return "Record a decision with rationale"
 
-    def execute(self, context: Dict[str, Any]) -> Any:
+    def execute(self, context: Dict[str, Any]) -> Optional[bool]:
         """Execute the decision action."""
         project_name = context.get('project_name', 'Unknown')
 
@@ -162,7 +162,7 @@ class FeedbackAction(BaseAction):
     def get_description(self) -> str:
         return "Record feedback on agents or artifacts"
 
-    def execute(self, context: Dict[str, Any]) -> Any:
+    def execute(self, context: Dict[str, Any]) -> Optional[bool]:
         """Execute the feedback action."""
         project_name = context.get('project_name', 'Unknown')
 
@@ -212,20 +212,20 @@ class BlockerAction(BaseAction):
     def get_description(self) -> str:
         return "Record workflow blockers and affected agents"
 
-    def execute(self, context: Dict[str, Any]) -> Any:
+    def execute(self, context: Dict[str, Any]) -> Optional[bool]:
         """Execute the blocker action."""
         project_name = context.get('project_name', 'Unknown')
 
         title = self.app.input_handler.get_text("Blocker title:")
-        if title == self.app.input_handler.InputResult.EXIT or not title:
+        if title == InputResult.EXIT or not title:
             return None
 
         description = self.app.input_handler.get_text("Blocker description:")
-        if description == self.app.input_handler.InputResult.EXIT or not description:
+        if description == InputResult.EXIT or not description:
             return None
 
         blocked_agents = self.app.input_handler.get_text("Blocked agents (comma-separated, optional):")
-        if blocked_agents == self.app.input_handler.InputResult.EXIT:
+        if blocked_agents == InputResult.EXIT:
             return None
 
         if title and description:
@@ -255,20 +255,20 @@ class IterationAction(BaseAction):
     def get_description(self) -> str:
         return "Record workflow iterations and version changes"
 
-    def execute(self, context: Dict[str, Any]) -> Any:
+    def execute(self, context: Dict[str, Any]) -> Optional[bool]:
         """Execute the iteration action."""
         project_name = context.get('project_name', 'Unknown')
 
         trigger = self.app.input_handler.get_text("What triggered this iteration:")
-        if trigger == self.app.input_handler.InputResult.EXIT or not trigger:
+        if trigger == InputResult.EXIT or not trigger:
             return None
 
         impacted_agents = self.app.input_handler.get_text("Impacted agents (comma-separated):")
-        if impacted_agents == self.app.input_handler.InputResult.EXIT or not impacted_agents:
+        if impacted_agents == InputResult.EXIT or not impacted_agents:
             return None
 
         description = self.app.input_handler.get_text("Iteration description:")
-        if description == self.app.input_handler.InputResult.EXIT or not description:
+        if description == InputResult.EXIT or not description:
             return None
 
         version_bump = self.app.input_handler.get_selection(
@@ -279,7 +279,7 @@ class IterationAction(BaseAction):
             ],
             message="Version bump:"
         )
-        if version_bump == self.app.input_handler.InputResult.EXIT:
+        if version_bump == InputResult.EXIT:
             return None
 
         if trigger and impacted_agents and description and version_bump:
@@ -310,16 +310,16 @@ class AssumptionAction(BaseAction):
     def get_description(self) -> str:
         return "Record workflow assumptions and their rationale"
 
-    def execute(self, context: Dict[str, Any]) -> Any:
+    def execute(self, context: Dict[str, Any]) -> Optional[bool]:
         """Execute the assumption action."""
         project_name = context.get('project_name', 'Unknown')
 
         assumption = self.app.input_handler.get_text("Assumption:")
-        if assumption == self.app.input_handler.InputResult.EXIT or not assumption:
+        if assumption == InputResult.EXIT or not assumption:
             return None
 
         rationale = self.app.input_handler.get_text("Rationale:")
-        if rationale == self.app.input_handler.InputResult.EXIT or not rationale:
+        if rationale == InputResult.EXIT or not rationale:
             return None
 
         if assumption and rationale:
@@ -348,12 +348,12 @@ class EndWorkflowAction(BaseAction):
     def get_description(self) -> str:
         return "End the current workflow session"
 
-    def execute(self, context: Dict[str, Any]) -> Any:
+    def execute(self, context: Dict[str, Any]) -> Optional[bool]:
         """Execute the end workflow action."""
         project_name = context.get('project_name', 'Unknown')
 
         confirm = self.app.input_handler.get_confirmation("Are you sure you want to end the workflow?", default=False)
-        if confirm == self.app.input_handler.InputResult.EXIT:
+        if confirm == InputResult.EXIT:
             return None
 
         if confirm:

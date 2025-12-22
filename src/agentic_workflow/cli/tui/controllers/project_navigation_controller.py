@@ -33,7 +33,7 @@ class ProjectNavigationController(BaseController):
     def _build_summary_panel(self) -> Panel:
         """Compact project summary panel."""
         body = Text()
-        body.append(f"Project: {self.app.project_root.name}\n", style="bold")
+        body.append(f"Project: {self.app.project_root.name}\n", style=self.theme.get_color_map().get("bold", "bold"))
         body.append(f"Location: {self.app.project_root}")
         return Panel(body, title="Project Navigation", padding=(0, 1))
 
@@ -42,10 +42,10 @@ class ProjectNavigationController(BaseController):
         inventory = self.app.query_handlers.get_project_inventory(self.app.project_root)
         entries = inventory.get("entries", [])
 
-        table = Table(show_header=True, header_style="bold", expand=True, box=None, pad_edge=False)
-        table.add_column("Entry", style="cyan", no_wrap=True)
-        table.add_column("Items", style="magenta", width=8, no_wrap=True)
-        table.add_column("Type", style="white", no_wrap=True)
+        table = Table(show_header=True, header_style=self.theme.get_color_map().get("table.header", "bold"), expand=True, box=None, pad_edge=False)
+        table.add_column("Entry", style=self.theme.get_color_map().get("primary", "cyan"), no_wrap=True)
+        table.add_column("Items", style=self.theme.get_color_map().get("accent", "magenta"), width=8, no_wrap=True)
+        table.add_column("Type", style=self.theme.get_color_map().get("body", "white"), no_wrap=True)
 
         if not entries:
             table.add_row("(empty)", "-", "-")
@@ -61,7 +61,7 @@ class ProjectNavigationController(BaseController):
     def _build_tips_panel(self) -> Panel:
         """Helpful navigation tips."""
         tips = Text()
-        tips.append("Use your file explorer or terminal to browse.\n", style="bold")
+        tips.append("Use your file explorer or terminal to browse.\n", style=self.theme.get_color_map().get("bold", "bold"))
         tips.append("Tip: run `ls` or `tree` from the project root to inspect structure.")
         return Panel(tips, padding=(0, 1))
 

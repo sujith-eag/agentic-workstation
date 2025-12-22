@@ -10,7 +10,7 @@ import questionary
 from questionary import Choice
 from rich.console import Console
 
-from .theme import Theme
+from agentic_workflow.cli.theme import Theme
 
 
 class InputResult(Enum):
@@ -22,9 +22,10 @@ class InputResult(Enum):
 class InputHandler:
     """Handles user input with consistent styling and exit logic."""
 
-    def __init__(self, console: Console = None):
+    def __init__(self, console: Console = None, feedback = None):
         """Initialize the input handler."""
         self.console = console or Console()
+        self.feedback = feedback
 
     def get_selection(
         self,
@@ -63,8 +64,11 @@ class InputHandler:
         except KeyboardInterrupt:
             return InputResult.EXIT
         except Exception as e:
-            from rich.text import Text
-            self.console.print(Text(f"Input error: {e}", style=Theme.ERROR))
+            if self.feedback:
+                self.feedback.error(f"Input error: {e}")
+            else:
+                from rich.text import Text
+                self.console.print(Text(f"Input error: {e}", style=Theme.ERROR))
             return InputResult.EXIT
 
     def get_text(
@@ -90,13 +94,19 @@ class InputHandler:
                 validate=validate
             ).unsafe_ask()
 
+            if isinstance(result, str) and result.strip().lower() in {"exit", "quit", "cancel"}:
+                return InputResult.EXIT
+
             return result
 
         except KeyboardInterrupt:
             return InputResult.EXIT
         except Exception as e:
-            from rich.text import Text
-            self.console.print(Text(f"Input error: {e}", style=Theme.ERROR))
+            if self.feedback:
+                self.feedback.error(f"Input error: {e}")
+            else:
+                from rich.text import Text
+                self.console.print(Text(f"Input error: {e}", style=Theme.ERROR))
             return InputResult.EXIT
 
     def wait_for_user(self, message: Optional[str] = "Press Enter to continue...", *, show_message: bool = True) -> InputResult:
@@ -137,8 +147,11 @@ class InputHandler:
         except KeyboardInterrupt:
             return InputResult.EXIT
         except Exception as e:
-            from rich.text import Text
-            self.console.print(Text(f"Input error: {e}", style=Theme.ERROR))
+            if self.feedback:
+                self.feedback.error(f"Input error: {e}")
+            else:
+                from rich.text import Text
+                self.console.print(Text(f"Input error: {e}", style=Theme.ERROR))
             return InputResult.EXIT
 
 

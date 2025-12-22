@@ -14,7 +14,7 @@ from rich.columns import Columns
 from rich.align import Align
 from rich.live import Live
 
-from .theme import Theme
+from agentic_workflow.cli.theme import Theme
 
 
 class LayoutManager:

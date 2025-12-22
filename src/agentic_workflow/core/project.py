@@ -22,9 +22,6 @@ __all__ = [
     "get_project_workflow_name",
     "get_project_stage",
     "update_project_meta",
-    "get_project_root",
-    "is_in_project",
-    "validate_project_name",
 ]
 
 
@@ -134,34 +131,3 @@ def update_project_meta(project_name: str, updates: Dict[str, object]) -> Projec
     meta.update(updates)
     save_project_meta(project_name, meta)
     return meta
-
-
-def get_project_root() -> Optional[Path]:
-    """Find the project root directory by looking for project structure.
-    
-    Returns:
-        Path to project root, or None if not in a project.
-    """
-    config_service = ConfigurationService()
-    return config_service.find_project_root()
-
-
-def is_in_project() -> bool:
-    """Check if we're currently in a project directory.
-    
-    Returns:
-        True if in a project directory.
-    """
-    return get_project_root() is not None
-
-
-def validate_project_name(name: str) -> bool:
-    """Validate a project name.
-    
-    Args:
-        name: Project name to validate.
-        
-    Returns:
-        True if name is valid (alphanumeric, underscore, hyphen only).
-    """
-    return bool(re.match(r'^[a-zA-Z0-9_-]+$', name))

@@ -19,7 +19,7 @@ import os
 import re
 import sys
 from datetime import datetime
-from agentic_workflow.cli.utils import display_success, display_error, display_warning
+from agentic_workflow.cli.display import display_success, display_error, display_warning
 
 try:
     import yaml

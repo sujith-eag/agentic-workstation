@@ -10,7 +10,8 @@ from typing import Any
 
 from rich.panel import Panel
 from rich.text import Text
-from ..ui import LayoutManager, InputHandler, Theme
+from agentic_workflow.cli.theme import Theme
+from ..ui import LayoutManager, InputHandler
 
 
 class BaseController(ABC):
@@ -71,8 +72,7 @@ class BaseController(ABC):
 
     def handle_exit(self) -> None:
         """Handle clean application exit."""
-        from rich.text import Text
-        self.console.print(Text("Goodbye!", style=Theme.SUCCESS))
+        self.feedback.success("Goodbye!")
         import sys
         sys.exit(0)
 

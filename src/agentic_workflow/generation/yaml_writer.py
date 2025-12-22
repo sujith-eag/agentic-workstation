@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, TextIO
 try:
     import yaml
 except ImportError:
-    from agentic_workflow.cli.utils import display_error
+    from agentic_workflow.cli.display import display_error
     display_error("ERROR: pyyaml required. Install with: pip install pyyaml")
     sys.exit(1)
 

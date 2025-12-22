@@ -44,30 +44,42 @@ class AgentOperationsController(BaseController):
 
     def run_menu(self) -> None:
         """Run the agent operations menu."""
-        self.display_context_header("Agent Operations")
-        project_name = self.app.project_root.name if self.app.project_root else "Unknown"
+        while True:  # Loop to allow retry on failure
+            self.display_context_header("Agent Operations")
+            project_name = self.app.project_root.name if self.app.project_root else "Unknown"
 
-        # FIXED: Use the dictionary KEY as the value to ensure lookup succeeds
-        choices = [
-            Choice(title=action.display_name, value=key)
-            for key, action in self.actions.items()
-        ]
+            # FIXED: Use the dictionary KEY as the value to ensure lookup succeeds
+            choices = [
+                Choice(title=action.display_name, value=key)
+                for key, action in self.actions.items()
+            ]
 
-        # Agent operations menu
-        choice = self.input_handler.get_selection(
-            choices=choices,
-            message="Select agent operation:"
-        )
+            # Agent operations menu
+            choice = self.input_handler.get_selection(
+                choices=choices,
+                message="Select agent operation:"
+            )
 
-        if choice == InputResult.EXIT or choice is None:
-            return  # Cancelled
+            if choice == InputResult.EXIT or choice is None:
+                return  # Cancelled - exit to project menu
 
-        # Dispatch
-        if choice in self.actions:
-            context = {'project_name': project_name}
-            self.actions[choice].execute(context)
-            # Give the user a chance to read results before returning
-            self.input_handler.wait_for_user()
+            # Dispatch
+            if choice in self.actions:
+                context = {'project_name': project_name}
+                result = self.actions[choice].execute(context)
+                
+                if result is False:
+                    # Action failed - stay in menu for retry
+                    self.feedback.warning("Operation failed. Please try again or select a different option.")
+                    self.input_handler.wait_for_user()
+                    continue  # Re-show menu
+                elif result is True:
+                    # Action succeeded - return to project menu
+                    self.input_handler.wait_for_user()
+                    return
+                else:
+                    # Action cancelled (None) - return to project menu
+                    return
 
 
 __all__ = ["AgentOperationsController"]

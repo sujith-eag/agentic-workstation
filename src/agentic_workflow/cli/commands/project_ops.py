@@ -5,11 +5,13 @@ Focus: Management and Status (List, Delete, Status).
 import click
 from ..handlers.project_handlers import ProjectHandlers
 from ..handlers.query_handlers import QueryHandlers
-from ..utils import display_error
+from ..display import display_error
+from rich.console import Console
 
 # Initialize Handlers
-project_handlers = ProjectHandlers()
-query_handlers = QueryHandlers()
+console = Console()
+project_handlers = ProjectHandlers(console)
+query_handlers = QueryHandlers(console)
 
 @click.command(name='list')
 @click.argument('name', required=False)
@@ -19,7 +21,7 @@ def list_projects(name: str, output_format: str):
     try:
         project_handlers.handle_list(name=name, output_format=output_format)
     except Exception as e:
-        display_error(f"List failed: {e}")
+        display_error(f"List failed: {e}", console)
 
 @click.command(name='delete')
 @click.argument('project')
@@ -33,7 +35,7 @@ def delete_project(project: str, force: bool):
     try:
         project_handlers.handle_delete(project=project, force=force)
     except Exception as e:
-        display_error(f"Deletion failed: {e}")
+        display_error(f"Deletion failed: {e}", console)
 
 @click.command(name='list-pending')
 @click.pass_context
@@ -45,7 +47,7 @@ def list_pending(ctx: click.Context):
     try:
         query_handlers.handle_list_pending(project=project_name)
     except Exception as e:
-        display_error(f"List pending failed: {e}")
+        display_error(f"List pending failed: {e}", console)
 
 @click.command(name='list-blockers')
 @click.pass_context
@@ -57,7 +59,7 @@ def list_blockers(ctx: click.Context):
     try:
         query_handlers.handle_list_blockers(project=project_name)
     except Exception as e:
-        display_error(f"List blockers failed: {e}")
+        display_error(f"List blockers failed: {e}", console)
 
 @click.command()
 @click.pass_context
@@ -71,7 +73,7 @@ def status(ctx: click.Context):
     try:
         query_handlers.handle_status(project=project_name)
     except Exception as e:
-        display_error(f"Status check failed: {e}")
+        display_error(f"Status check failed: {e}", console)
 
 
 __all__ = ["list_projects", "delete_project", "list_pending", "list_blockers", "status"]
