@@ -25,8 +25,6 @@ rich_click_config = RichHelpConfiguration(
     style_metavar_separator=theme_map.get('help.description.color', 'white'),
 )
 
-console = Console()
-
 # Import New Command Modules (Phase 2)
 from agentic_workflow.cli.commands import global_ops
 from agentic_workflow.cli.commands import project_ops
@@ -139,7 +137,7 @@ def run_tui_mode(config: RuntimeConfig):
     """Launch the interactive Text User Interface."""
     try:
         from .tui.main import TUIApp
-        app = TUIApp(config)
+        app = TUIApp(config, console=console)
         app.run()
     except Exception as e:
         # Fallback error handling if TUI crashes hard

@@ -62,7 +62,7 @@ class ConfigurationService:
         config_dir = self._get_user_config_dir()
         return config_dir / "config.yaml"
 
-    def ensure_system_configured(self, console: Any = None, input_handler: Any = None, feedback: Any = None, layout: Any = None) -> None:
+    def ensure_system_configured(self, console: Any = None, input_handler: Any = None, feedback: Any = None, layout: Any = None, error_view: Any = None) -> None:
         """Ensure Layer 2 (global) config exists, running setup if interactive."""
         if not self.global_config_path.exists():
             if sys.stdin.isatty() and sys.stdout.isatty():
@@ -71,6 +71,7 @@ class ConfigurationService:
                     console_override=console or self.console,
                     input_handler=input_handler or self.input_handler,
                     feedback=feedback or self.feedback,
+                    error_view=error_view,
                 )
             else:
                 # Headless fallback: create default config
@@ -95,9 +96,10 @@ class ConfigurationService:
         input_handler: Any = None,
         feedback: Any = None,
         layout: Any = None,
+        error_view: Any = None,
     ) -> RuntimeConfig:
         """Load and return the merged `RuntimeConfig` assembled from all layers."""
-        self.ensure_system_configured(console=console, input_handler=input_handler, feedback=feedback, layout=layout)
+        self.ensure_system_configured(console=console, input_handler=input_handler, feedback=feedback, layout=layout, error_view=error_view)
 
         config = RuntimeConfig(verbose=verbose, force=force)
 
@@ -138,18 +140,6 @@ class ConfigurationService:
         except Exception as e:
             raise ConfigError(f"Failed to load config from {path}: {e}")
 
-    def _load_toml(self, path: Path) -> RawConfig:
-        """Read a TOML file and return a typed `RawConfig` mapping.
-
-        Uses `tomllib` (or `tomli` fallback) to parse TOML data and returns
-        an empty mapping when no data is present. Raises `ConfigError` on failure.
-        """
-        try:
-            with open(path, "rb") as f:
-                return tomllib.load(f)
-        except Exception as e:
-            raise ConfigError(f"Failed to load config from {path}: {e}")
-
     def deep_merge(self, base: RawConfig, overlay: RawConfig) -> RawConfig:
         """Deep-merge two raw configuration mappings and return the merged mapping.
 
@@ -178,6 +168,3 @@ class ConfigurationService:
                 result[key] = value  # type: ignore[assignment]
         return result
 
-
-# Standalone utility functions for backward compatibility
-# Note: These have been moved to core/paths.py for consolidation

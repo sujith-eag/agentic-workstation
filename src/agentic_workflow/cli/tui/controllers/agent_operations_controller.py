@@ -2,9 +2,11 @@
 Agent operations controller for TUI.
 
 This module contains the controller for agent operations menu.
+Uses DependencyContainer to create actions with proper dependencies.
 """
 
 from questionary import Choice
+from typing import TYPE_CHECKING
 
 from .base_controller import BaseController
 from ..actions import (
@@ -19,23 +21,81 @@ from ..actions import (
 )
 from ..ui import InputResult
 
+if TYPE_CHECKING:
+    from ..container import DependencyContainer
+
 
 class AgentOperationsController(BaseController):
     """Controller for agent operations menu."""
 
-    def __init__(self, app):
-        """Initialize the agent operations controller."""
-        super().__init__(app)
-        # Register actions using the Command Pattern
+    def __init__(self, container: 'DependencyContainer', **kwargs):
+        """Initialize the agent operations controller.
+        
+        Args:
+            container: Dependency injection container for creating actions
+            **kwargs: Controller dependencies (console, layout, etc.)
+        """
+        super().__init__(**kwargs)
+        self.container = container
+        
+        # Create actions using dependency injection from container
+        input_handler = self.container.resolve('input_handler')
+        feedback = self.container.resolve('feedback')
+        progress = self.container.resolve('progress')
+        session_handlers = self.container.resolve('session_handlers')
+        entry_handlers = self.container.resolve('entry_handlers')
+        query_handlers = self.container.resolve('query_handlers')
+        
         self.actions = {
-            'activate': ActivateAgentAction(self.app),
-            'handoff': HandoffAction(self.app),
-            'decision': DecisionAction(self.app),
-            'feedback': FeedbackAction(self.app),
-            'blocker': BlockerAction(self.app),
-            'iteration': IterationAction(self.app),
-            'assumption': AssumptionAction(self.app),
-            'end': EndWorkflowAction(self.app),
+            'activate': ActivateAgentAction(
+                input_handler=input_handler,
+                feedback=feedback,
+                progress=progress,
+                session_handlers=session_handlers
+            ),
+            'handoff': HandoffAction(
+                input_handler=input_handler,
+                feedback=feedback,
+                progress=progress,
+                entry_handlers=entry_handlers,
+                query_handlers=query_handlers
+            ),
+            'decision': DecisionAction(
+                input_handler=input_handler,
+                feedback=feedback,
+                progress=progress,
+                entry_handlers=entry_handlers
+            ),
+            'feedback': FeedbackAction(
+                input_handler=input_handler,
+                feedback=feedback,
+                progress=progress,
+                entry_handlers=entry_handlers
+            ),
+            'blocker': BlockerAction(
+                input_handler=input_handler,
+                feedback=feedback,
+                progress=progress,
+                entry_handlers=entry_handlers
+            ),
+            'iteration': IterationAction(
+                input_handler=input_handler,
+                feedback=feedback,
+                progress=progress,
+                entry_handlers=entry_handlers
+            ),
+            'assumption': AssumptionAction(
+                input_handler=input_handler,
+                feedback=feedback,
+                progress=progress,
+                entry_handlers=entry_handlers
+            ),
+            'end': EndWorkflowAction(
+                input_handler=input_handler,
+                feedback=feedback,
+                progress=progress,
+                session_handlers=session_handlers
+            ),
         }
 
     def execute(self, *args, **kwargs) -> None:
@@ -46,7 +106,7 @@ class AgentOperationsController(BaseController):
         """Run the agent operations menu."""
         while True:  # Loop to allow retry on failure
             self.display_context_header("Agent Operations")
-            project_name = self.app.project_root.name if self.app.project_root else "Unknown"
+            project_name = self.project_root.name if self.project_root else "Unknown"
 
             # FIXED: Use the dictionary KEY as the value to ensure lookup succeeds
             choices = [

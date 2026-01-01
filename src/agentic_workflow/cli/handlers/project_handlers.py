@@ -14,7 +14,7 @@ from ...core.exceptions import (
 from ...core.paths import find_project_root
 from agentic_workflow.services import ProjectService
 from ..formatting import shorten_path
-from ..display import display_action_result, display_info, display_warning
+from ..display import display_action_result, display_info, display_warning, display_table
 from rich.console import Console
 
 logger = logging.getLogger(__name__)
@@ -75,11 +75,12 @@ class ProjectHandlers:
         """Handle project deletion (Renamed from remove for consistency)."""
         try:
             validate_required(project, "project", "delete")
-            logger.info(f"Deleting project '{project}'")
 
             # Check existence first
             if not self.project_service.project_exists(project):
                 raise ProjectNotFoundError(f"Project '{project}' not found")
+
+            logger.info(f"Deleting project '{project}'")
 
             # Execute deletion
             result = self.project_service.remove_project(project, force)
@@ -96,40 +97,29 @@ class ProjectHandlers:
 
     def _format_project_output(self, project_data: Dict[str, Any], output_format: str, title: str) -> None:
         """Format project data for output."""
-        if output_format == 'json':
-            import json
-            display_info(json.dumps(project_data, indent=2), self.console)
-        elif output_format == 'yaml':
-            import yaml
-            display_info(yaml.dump(project_data, default_flow_style=False), self.console)
-        else:  # table
-            display_info(f"\n{title}", self.console)
-            display_info("=" * len(title), self.console)
+        if output_format in ('json', 'yaml'):
+            # For single project, wrap in list for display_table
+            display_table([project_data], self.console, title=title, format_type=output_format)
+        else:
+            # Convert nested dict to flat format for table display
+            flat_data = []
             for key, value in project_data.items():
                 if isinstance(value, dict):
-                    display_info(f"{key}:", self.console)
                     for sub_key, sub_value in value.items():
-                        display_info(f"  {sub_key}: {sub_value}", self.console)
+                        flat_data.append({'Property': f"{key}.{sub_key}", 'Value': str(sub_value)})
                 else:
-                    display_info(f"{key}: {value}", self.console)
-            display_info("", self.console)
+                    flat_data.append({'Property': key, 'Value': str(value)})
+            display_table(flat_data, self.console, title=title, columns=['Property', 'Value'])
 
     def _format_projects_list(self, projects: list, output_format: str) -> None:
         """Format projects list for output."""
-        if output_format == 'json':
-            import json
-            display_info(json.dumps(projects, indent=2), self.console)
-        elif output_format == 'yaml':
-            import yaml
-            display_info(yaml.dump(projects, default_flow_style=False), self.console)
-        else:
-            display_info("\nAvailable Projects", self.console)
-            display_info("=" * 18, self.console)
-            for project in projects:
-                display_info(f"Name: {project['name']}", self.console)
-                display_info(f"  Workflow: {project['workflow']}", self.console)
-                display_info(f"  Description: {project['description']}", self.console)
-                display_info("", self.console)
+        display_table(
+            data=projects,
+            console=self.console,
+            title="Available Projects",
+            columns=['name', 'workflow', 'description'],
+            format_type=output_format
+        )
 
 
 __all__ = ["ProjectHandlers"]

@@ -60,43 +60,31 @@ def setup_logging(verbose: bool = False, log_level: str = "INFO") -> None:
 
 
 def format_output(data: Any, format_type: str = "table", title: Optional[str] = None, console: Optional[Console] = None) -> None:
-    """Format data for output in various formats."""
+    """Format data for output in various formats.
+    
+    Delegates to display_table() for consistency with display layer.
+    
+    Args:
+        data: The data to format and display.
+        format_type: Output format - 'table', 'json', or 'yaml'.
+        title: Optional title for the output.
+        console: Rich Console instance (creates new if None).
+    """
     if console is None:
         console = Console()
+    
     try:
-        if format_type == "json":
-            console.print_json(json.dumps(data, indent=2, default=str))
-        elif format_type == "yaml":
-            console.print(yaml.dump(data, default_flow_style=False))
-        elif format_type == "table":
-            if isinstance(data, list) and data:
-                table = Table(title=title)
-                # Get headers from first item, with validation
-                if isinstance(data[0], dict) and data[0]:
-                    headers = list(data[0].keys())
-                else:
-                    headers = ["Value"]
-                
-                for header in headers:
-                    table.add_column(header, style="cyan")
-
-                for item in data:
-                    if isinstance(item, dict):
-                        row = [str(item.get(h, "")) for h in headers]
-                    else:
-                        row = [str(item)]
-                    table.add_row(*row)
-                console.print(table)
-            elif isinstance(data, dict):
-                table = Table(title=title)
-                table.add_column("Key", style="cyan")
-                table.add_column("Value", style="green")
-                for key, value in data.items():
-                    table.add_row(key, str(value))
-                console.print(table)
-            else:
-                console.print(data)
+        # Delegate to display layer for consistency
+        from .display import display_table
+        
+        if isinstance(data, list):
+            display_table(data, console, title=title, format_type=format_type)
+        elif isinstance(data, dict):
+            # Convert dict to list of key-value pairs for table display
+            dict_list = [{"Key": k, "Value": str(v)} for k, v in data.items()]
+            display_table(dict_list, console, title=title, format_type=format_type)
         else:
+            # Fallback for non-structured data
             console.print(data)
     except Exception as e:
         display_error(f"Failed to format output: {e}", console)

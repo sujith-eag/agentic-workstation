@@ -29,8 +29,12 @@ try:
 except ImportError:
     jsonschema = None
 
-from agentic_workflow.cli.display import display_error, display_warning, display_info, display_success
+from agentic_workflow.cli.display import display_error, display_warning, display_info, display_action_result
+from rich.console import Console
 from agentic_workflow.generation.canonical_loader import load_canonical_workflow, get_canonical_dir
+
+# Create console for display functions
+console = Console()
 
 # Resolve paths
 ROOT = Path(__file__).resolve().parents[3]
@@ -645,7 +649,7 @@ def main():
     display_info(f"VALIDATION SUMMARY: {len(results)} workflow(s) checked")
     passed = sum(1 for r in results if r.passed)
     failed = len(results) - passed
-    display_success(f"Passed: {passed}")
+    display_action_result(f"Passed: {passed}", success=True, console=console)
     display_info(f"Failed: {failed}")
     
     sys.exit(0 if all_passed else 1)

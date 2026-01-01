@@ -2,6 +2,7 @@
 Interactive Setup Wizard for Agentic Workflow OS.
 Triggers on first run to populate ~/.config/agentic/config.yaml.
 """
+import logging
 import os
 import sys
 from pathlib import Path
@@ -14,12 +15,14 @@ from rich.text import Text
 
 # Import the schema to ensure we save valid data
 from agentic_workflow.core.schema import SystemConfig
-from agentic_workflow.core.exceptions import ConfigError
+from agentic_workflow.core.exceptions import ConfigError, FileSystemError
 
 # Import UI utilities
-from .branding import display_context_header
+from .branding import display_branding_splash
 from agentic_workflow.cli.theme import Theme
 from .ui import InputHandler, InputResult, FeedbackPresenter
+
+logger = logging.getLogger(__name__)
 
 console: Optional[Console] = None
 
@@ -31,18 +34,25 @@ def run_setup_wizard(
     input_handler: Optional[InputHandler] = None,
     feedback: Optional[FeedbackPresenter] = None,
     layout=None,
+    error_view=None,
 ) -> None:
     """Launch the first-run configuration wizard.
 
-    When invoked from the TUI, pass the shared `console`, `input_handler`, and `feedback`
-    to avoid creating a new module-level Console. When invoked from CLI/bootstrap without
-    a TUI context, the wizard will fall back to a local Console instance.
+    When invoked from the TUI, pass the shared `console`, `input_handler`, `feedback`,
+    and `error_view` to avoid creating a new module-level Console. When invoked from
+    CLI/bootstrap without a TUI context, the wizard will fall back to a local Console instance.
     """
     global console
     console = console_override or console or Console()
     theme = Theme
     input_handler = input_handler or InputHandler(console, feedback)
     feedback = feedback or FeedbackPresenter(console, theme_map=theme.feedback_theme())
+    
+    # Create error_view if not provided
+    if error_view is None:
+        from .views.error_view import ErrorView
+        error_view = ErrorView(console, input_handler, theme_map=theme.get_color_map())
+    
     # For testing: auto-setup with defaults
     if os.environ.get('AGENTIC_AUTO_SETUP'):
         config_data = {
@@ -52,7 +62,7 @@ def run_setup_wizard(
             "check_updates": True,
             "log_level": "INFO"
         }
-        _save_config(config_data, feedback)
+        _save_config(config_data, feedback, error_view)
         _ensure_workspace_exists(Path(config_data['default_workspace']).expanduser(), feedback)
         feedback.success("Auto-setup complete!")
         return
@@ -60,7 +70,7 @@ def run_setup_wizard(
     console.clear()
 
     # Display AGENTIC header
-    display_context_header("Global", console, theme_map=theme.get_color_map())
+    display_branding_splash("Global", console, theme_map=theme.get_color_map())
     console.print(Text(f"Press Ctrl+C or choose Cancel / Exit at any prompt to abort setup.\n", style=theme.DIM))
 
     # 1. Welcome UI
@@ -146,7 +156,7 @@ def run_setup_wizard(
             return
 
         if confirm:
-            _save_config(config_data, feedback)
+            _save_config(config_data, feedback, error_view)
             _ensure_workspace_exists(Path(workspace_path), feedback)
 
             feedback.success("Setup complete!")
@@ -159,12 +169,17 @@ def run_setup_wizard(
     except KeyboardInterrupt:
         feedback.warning("Setup interrupted.")
         sys.exit(1)
+    except (ConfigError, FileSystemError) as e:
+        logger.error(f"Setup failed with known error: {e}")
+        error_view.display_error_modal(f"Setup failed: {e}", title="Setup Error")
+        sys.exit(1)
     except Exception as e:
-        feedback.error(f"Setup failed: {e}")
+        logger.exception(f"Unexpected error during setup: {e}")
+        error_view.display_error_modal(f"Unexpected setup error: {e}", title="Critical Setup Error")
         sys.exit(1)
 
 
-def _save_config(data: dict, feedback: FeedbackPresenter) -> None:
+def _save_config(data: dict, feedback: FeedbackPresenter, error_view=None) -> None:
     """Serialize config to YAML with validation."""
     try:
         # Validate against schema before saving
@@ -182,9 +197,27 @@ def _save_config(data: dict, feedback: FeedbackPresenter) -> None:
         with open(config_file, "w") as f:
             yaml.dump(config_dict, f, default_flow_style=False)
             
-    except Exception as e:
-        feedback.error(f"Error saving configuration: {e}")
+    except (ValueError, yaml.YAMLError) as e:
+        logger.error(f"Configuration validation or serialization error: {e}")
+        if error_view:
+            error_view.display_error_modal(f"Error saving configuration: {e}", title="Configuration Error")
+        else:
+            feedback.error(f"Error saving configuration: {e}")
         raise ConfigError(f"Failed to save configuration: {e}")
+    except (OSError, IOError) as e:
+        logger.error(f"File system error saving config: {e}")
+        if error_view:
+            error_view.display_error_modal(f"Error saving configuration: {e}", title="File System Error")
+        else:
+            feedback.error(f"Error saving configuration: {e}")
+        raise FileSystemError(f"Failed to write config file: {e}")
+    except Exception as e:
+        logger.exception(f"Unexpected error saving configuration: {e}")
+        if error_view:
+            error_view.display_error_modal(f"Unexpected error saving configuration: {e}", title="Critical Error")
+        else:
+            feedback.error(f"Unexpected error saving configuration: {e}")
+        raise
 
 
 def _ensure_workspace_exists(path: Path, feedback: FeedbackPresenter) -> None:
@@ -193,8 +226,12 @@ def _ensure_workspace_exists(path: Path, feedback: FeedbackPresenter) -> None:
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
             feedback.info(f"Created workspace directory: {path}")
-    except Exception as e:
+    except (OSError, IOError) as e:
+        logger.warning(f"Could not create workspace directory {path}: {e}")
         feedback.warning(f"Could not create workspace directory: {e}")
+    except Exception as e:
+        logger.exception(f"Unexpected error creating workspace {path}: {e}")
+        feedback.warning(f"Unexpected error creating workspace: {e}")
 
 
 __all__ = ["run_setup_wizard"]

@@ -34,10 +34,11 @@ class Theme:
     # UI elements
     BORDER = "blue"
     PANEL_BORDER = "cyan"
-    TABLE_HEADER = "bold cyan"
-    TABLE_ROW = "white"
+    # TABLE_HEADER = "bold cyan"
+    # TABLE_ROW = "white"
     TABLE_TITLE = "bold blue"
     TABLE_BORDER = "blue"
+    TABLE_BODY = "white"
 
     # Text semantics
     WARNING_TEXT = "yellow"
@@ -155,11 +156,6 @@ class Theme:
     }
 
     @classmethod
-    def get_rich_style(cls, name: str) -> str:
-        """Get a rich style by name."""
-        return getattr(cls, name.upper(), "white")
-
-    @classmethod
     def get_color_map(cls) -> Dict[str, str]:
         """Get a mapping of semantic names to rich styles."""
         base_map = {
@@ -216,10 +212,5 @@ class Theme:
     def header_theme(cls) -> Dict[str, str]:
         """Return header/context bar tokens."""
         return cls.HEADER_BAR.copy()
-    
-    @classmethod
-    def cli_theme(cls) -> Dict[str, str]:
-        """Return CLI-specific theme tokens."""
-        return cls.CLI.copy()
-    
+
 __all__ = ["Theme"]

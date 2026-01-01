@@ -10,12 +10,12 @@ Modules:
 - active_session: Commands for the active work loop (activate, handoff, decision).
 """
 
+from . import active_session
 from . import global_ops
 from . import project_ops
-from . import active_session
 
 __all__ = [
+    "active_session",
     "global_ops",
     "project_ops",
-    "active_session",
 ]

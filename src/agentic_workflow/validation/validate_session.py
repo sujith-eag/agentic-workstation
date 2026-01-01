@@ -9,7 +9,11 @@ import sys
 from pathlib import Path
 import yaml
 
-from agentic_workflow.cli.display import display_error, display_success, display_info
+from agentic_workflow.cli.display import display_error, display_action_result, display_info
+from rich.console import Console
+
+# Create console for display functions
+console = Console()
 
 __all__ = ["validate_init", "validate_activate", "validate_populate", "validate_end", "validate_update_index", "validate_check_handoff"]
 
@@ -39,7 +43,7 @@ def validate_init(args):
     for sub in ("artifacts", "agent_context", "agent_log"):
         if not (p / sub).exists():
             fail(f"missing subdir: {p/ sub}")
-    display_success("init validation passed")
+    display_action_result("init validation passed", success=True, console=console)
 
 
 def validate_activate(args):
@@ -48,7 +52,7 @@ def validate_activate(args):
     active = p / "agent_context" / "active_session.md"
     if not active.exists():
         fail(f"active_session.md missing after activate: {active}")
-    display_success("activate validation passed")
+    display_action_result("activate validation passed", success=True, console=console)
 
 
 def validate_populate(args):
@@ -57,7 +61,7 @@ def validate_populate(args):
     af = Path(get_agent_files_dir())
     if not af.exists() or not any(af.glob("A*_*")):
         fail("agent_files not populated")
-    display_success("populate validation passed")
+    display_action_result("populate validation passed", success=True, console=console)
 
 
 def validate_end(args):
@@ -66,7 +70,7 @@ def validate_end(args):
     ctx = p / "agent_log" / "context_log.md"
     if not ctx.exists():
         fail(f"context_log.md missing after end: {ctx}")
-    display_success("end validation passed")
+    display_action_result("end validation passed", success=True, console=console)
 
 
 def validate_update_index(args):
@@ -76,7 +80,7 @@ def validate_update_index(args):
     a = Path(args.artifact)
     if not a.exists():
         fail(f"artifact path does not exist: {a}")
-    display_success("update-index validation passed")
+    display_action_result("update-index validation passed", success=True, console=console)
 
 
 def validate_check_handoff(args):
@@ -95,7 +99,7 @@ def validate_check_handoff(args):
     matches = [e for e in data if isinstance(e, dict) and (e.get('handoff_id')==hid or e.get('id')==hid or e.get('type')==hid)]
     if not matches:
         fail(f"no handoff matching {hid} in {ledger}")
-    display_success(f"check-handoff found {len(matches)} matching entry(ies)")
+    display_action_result(f"check-handoff found {len(matches)} matching entry(ies)", success=True, console=console)
 
 
 def main():

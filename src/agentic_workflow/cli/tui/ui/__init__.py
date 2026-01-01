@@ -9,4 +9,4 @@ from .input import InputHandler, InputResult
 from .feedback import FeedbackPresenter
 from .progress import ProgressPresenter
 
-__all__ = ["Theme", "LayoutManager", "InputHandler", "InputResult", "FeedbackPresenter", "ProgressPresenter"]
+__all__ = ["LayoutManager", "InputHandler", "InputResult", "FeedbackPresenter", "ProgressPresenter"]

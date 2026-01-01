@@ -16,11 +16,14 @@ from .base_controller import BaseController
 class ProjectNavigationController(BaseController):
     """Controller for project navigation display."""
 
+    def __init__(self, **kwargs):
+        """Initialize with required dependencies."""
+        super().__init__(**kwargs)
+
     def execute(self, *args, **kwargs) -> None:
         """Execute project navigation display."""
-        if not self.app.project_root:
-            self.feedback.error("Not in a project directory.")
-            self.input_handler.wait_for_user()
+        if not self.project_root:
+            self.error_view.display_error_modal("Not in a project directory.", title="Project Required")
             return
 
         summary_panel = self._build_summary_panel()
@@ -33,13 +36,13 @@ class ProjectNavigationController(BaseController):
     def _build_summary_panel(self) -> Panel:
         """Compact project summary panel."""
         body = Text()
-        body.append(f"Project: {self.app.project_root.name}\n", style=self.theme.get_color_map().get("bold", "bold"))
-        body.append(f"Location: {self.app.project_root}")
+        body.append(f"Project: {self.project_root.name}\n", style=self.theme.get_color_map().get("bold", "bold"))
+        body.append(f"Location: {self.project_root}")
         return Panel(body, title="Project Navigation", padding=(0, 1))
 
     def _build_directory_panel(self) -> Panel:
         """Compact directory overview table using handler-provided inventory."""
-        inventory = self.app.query_handlers.get_project_inventory(self.app.project_root)
+        inventory = self.query_handlers.get_project_inventory(self.project_root)
         entries = inventory.get("entries", [])
 
         table = Table(show_header=True, header_style=self.theme.get_color_map().get("table.header", "bold"), expand=True, box=None, pad_edge=False)

@@ -49,15 +49,23 @@ def get_agentic_ascii_art_colored(
     return text
 
 
-def display_context_header(
+def display_branding_splash(
     context: Optional[str] = None,
     console: Optional[Console] = None,
     theme_map: Optional[dict] = None
 ) -> None:
-    """Display AGENTIC header with optional context-specific hints.
+    """Display large AGENTIC branding splash for main menu entry points.
+    
+    This is the BIG header with ASCII art. Use this for:
+    - Global menu entry
+    - Project menu entry
+    - Setup wizard
+    
+    For sub-screens and operations, use BaseController.display_context_header()
+    instead, which shows compact runtime context (project + agent + title).
 
     Args:
-        context: Optional context ("Global" or "Project") for mode-specific hints
+        context: Context hint - "Global" or "Project"
         console: Rich console instance (optional, creates new if not provided)
         theme_map: Theme mapping (optional, uses Theme if not provided)
     """
@@ -96,5 +104,5 @@ def display_context_header(
 
 __all__ = [
     "get_agentic_ascii_art_colored",
-    "display_context_header",
+    "display_branding_splash",
 ]

@@ -19,7 +19,11 @@ import os
 import re
 import sys
 from datetime import datetime
-from agentic_workflow.cli.display import display_success, display_error, display_warning
+from agentic_workflow.cli.display import display_action_result, display_error, display_warning
+from rich.console import Console
+
+# Create console for display functions
+console = Console()
 
 try:
     import yaml
@@ -262,7 +266,7 @@ def main():
         f.write(header)
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
 
-    display_success(f'Wrote YAML: {out_path}')
+    display_action_result(f'Wrote YAML: {out_path}', success=True, console=console)
 
 
 if __name__ == '__main__':

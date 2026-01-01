@@ -3,17 +3,56 @@
 ## Purpose
 A deterministic, menu-driven Rich/Questionary TUI that orchestrates project and agent workflows without embedding business logic. All state mutations live in services/handlers; the TUI only renders and routes.
 
-**Status:** Post-refactor v1.0.10 - Single console ownership, handler-only data access, TUI-native feedback/input, theme integration complete, error handling standardized, CLI-TUI consistency achieved.
+**Status:** Post-refactor v2.0.0 - **God Object Eliminated**, Dependency Injection complete, Pure DI with explicit dependencies, no backward compatibility code, all components properly separated, console ownership unified, handler-only data access, TUI-native feedback/input, theme integration complete, error handling standardized, CLI-TUI consistency achieved.
+
+## Refactoring Achievements (v2.0.0)
+
+### ✅ God Object Pattern Eliminated
+- **Before:** TUIApp managed 22 dependencies (6 handlers, 9 controllers, 5 UI components, 2 views)
+- **After:** TUIApp uses DependencyContainer for all service resolution
+- **Result:** Clean separation, explicit dependencies, fully testable components
+
+### ✅ Dependency Injection Container
+- Singleton and transient service lifetimes
+- Lazy initialization for memory optimization
+- Clear dependency resolution with helpful error messages
+- Zero god object references (`self.app` completely removed)
+
+### ✅ Pure Dependency Injection
+- All controllers use explicit constructor injection
+- All actions receive only required dependencies
+- No backward compatibility bridge methods
+- Clean architecture with single responsibility principle
+
+### ✅ Architecture Compliance
+- Console properly shared via DI container
+- All imports properly structured (no circular dependencies)
+- Error handling uses feedback presenter (no god object)
+- Exit handling at app level only (removed from controllers)
 
 ## Architecture Overview
-- **Entry**: `tui/main.py` instantiates `TUIApp` with shared `Console`, `LayoutManager`, `InputHandler`, `Theme`, `FeedbackPresenter`, and `ProgressPresenter` via `TUIContext` dataclass.
-- **Controllers** (`cli/tui/controllers/`): Route user intent; never perform business logic directly. Key controllers: `GlobalMenuController`, `ProjectMenuController`, `ProjectWizardController`, `ProjectManagementController`, `WorkflowStatusController`, `AgentOperationsController`, `ArtifactManagementController`, `SystemInfoController`, `ProjectNavigationController`.
+- **Entry**: `tui/main.py` instantiates `TUIApp` with shared `Console` via `DependencyContainer`
+- **Controllers** (`cli/tui/controllers/`): Route user intent with **explicit dependencies**; never perform business logic directly. All controllers extend `BaseController` and receive dependencies via constructor injection. Key controllers: `GlobalMenuController`, `ProjectMenuController`, `ProjectWizardController`, `ProjectManagementController`, `WorkflowStatusController`, `AgentOperationsController`, `ArtifactManagementController`, `SystemInfoController`, `ProjectNavigationController`.
+- **Actions** (`cli/tui/actions/`): Command pattern implementation with **explicit dependencies**. Each action receives only what it needs: `input_handler`, `feedback`, `progress`, and specific handlers (session_handlers OR entry_handlers).
+- **DependencyContainer** (`cli/tui/container.py`): Central service registry managing singleton and transient services with lazy loading. Provides clean dependency resolution and eliminates god object anti-pattern.
 - **Views** (`cli/tui/views/`): Pure renderers using Rich components. Examples: `DashboardView`, `ProjectListView`, `ErrorView`.
 - **UI Utilities** (`cli/tui/ui/`): Layout, theming, input, feedback, progress. `LayoutManager` standardizes screen composition; `InputHandler` normalizes exits; `Theme` centralizes colors; `FeedbackPresenter` and `ProgressPresenter` use theme maps and route status through `LayoutManager.render_status` to avoid panel stacking.
 - **Handlers/Services** (`cli/handlers.py` etc.): All business operations, I/O, and state come from handlers. Controllers only call them and render results.
 
 ## Key Architectural Achievements
 
+### v2.0.0 - God Object Refactoring Complete
+- **God Object Eliminated**: TUIApp no longer manages all dependencies directly
+- **Dependency Injection Container**: All services registered and resolved via container with lazy loading
+- **Pure DI**: Controllers and actions use explicit constructor injection only (no `self.app` references)
+- **No Backward Compatibility**: Clean break refactoring, no legacy bridge methods
+- **Zero God Object References**: All `self.app.*` patterns removed from entire codebase
+- **Testability**: All components independently testable with mocks
+- **Exit Handling**: Moved from controllers to app level for proper separation
+- **Error Handling**: Decorator uses `self.feedback` instead of god object
+- **Imports Cleanup**: Removed all unused imports
+
+### v1.0.10 - Theme & Error Handling
 - **Theme Integration Complete**: All components use `Theme.get_color_map()` for consistent theming
 - **Error Handling Standardized**: TUI uses `FeedbackPresenter` for inline errors instead of modal dialogs
 - **Input Consistency**: All input operations properly handle `InputResult.EXIT` and cancellation

@@ -7,7 +7,7 @@ from typing import Optional
 import logging
 
 from agentic_workflow.core.exceptions import AgenticWorkflowError
-from ..display import display_info, display_error, display_help_panel
+from ..display import display_info, display_error, display_help_panel, display_text_panel
 from rich.console import Console
 
 logger = logging.getLogger(__name__)
@@ -65,8 +65,12 @@ class GlobalHandlers:
             if config_path.exists():
                 with open(config_path) as f:
                     content = f.read()
-                display_info(f"Global config at: {config_path}", self.console)
-                display_info(content, self.console)
+                display_text_panel(
+                    content=content,
+                    console=self.console,
+                    title=f"Global Configuration ({config_path.name})",
+                    syntax='yaml'
+                )
             else:
                 display_info("No global config found. Run 'agentic init' inside a folder to set it up.", self.console)
 

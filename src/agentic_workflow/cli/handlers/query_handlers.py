@@ -18,8 +18,7 @@ from agentic_workflow.core.exceptions import handle_error, validate_required
 from agentic_workflow.core.paths import find_project_root
 from agentic_workflow.services import LedgerService, ProjectService
 from ..formatting import shorten_path
-from ..ui_utils import format_output
-from ..display import display_action_result, display_error, display_info, display_status_panel, display_warning
+from ..display import display_action_result, display_error, display_info, display_status_panel, display_warning, display_table
 from rich.console import Console
 
 logger = logging.getLogger(__name__)
@@ -195,7 +194,7 @@ class QueryHandlers:
             pending_handoffs = self.ledger_service.get_pending_handoffs(project)
             
             if pending_handoffs:
-                format_output(pending_handoffs, format_type='table', title=f"Pending Handoffs in '{project}'", console=self.console)
+                display_table(pending_handoffs, self.console, title=f"Pending Handoffs in '{project}'", format_type='table')
             else:
                 display_info("No pending handoffs.", self.console)
 
@@ -222,7 +221,7 @@ class QueryHandlers:
             active_blockers = self.ledger_service.get_active_blockers(project)
             
             if active_blockers:
-                format_output(active_blockers, format_type='table', title=f"Active Blockers in '{project}'", console=self.console)
+                display_table(active_blockers, self.console, title=f"Active Blockers in '{project}'", format_type='table')
             else:
                 display_info("No active blockers.", self.console)
 

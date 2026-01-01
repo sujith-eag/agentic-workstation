@@ -1,6 +1,6 @@
 # Agentic Workflow OS CLI & TUI Reference
 
-**Version:** 1.0.10
+**Version:** 1.0.11
 **Generated:** December 15, 2025
 **Source:** Code Review Analysis & CLI Implementation
 
@@ -93,7 +93,7 @@ agentic status
 agentic activate A-01
 
 # Record handoff between agents (from agent inferred from active session)
-agentic handoff --to A-02 --artifacts "requirements.md,architecture.md"
+agentic handoff --to A-02 --artifacts "A-01_incubation/requirements.md,A-01_incubation/architecture.md"
 
 # Record project decision
 agentic decision --title "Technology Stack Selection" --rationale "React + Node.js chosen"
@@ -120,7 +120,8 @@ agentic list-blockers
 agentic end
 ```
 
-**Note:** `--artifacts` values are relative to the project's `artifacts/` directory (for example, `A-02_planning/requirements_spec.md`).
+**Note:** `--artifacts` values are relative to the project's `artifacts/` directory.
+Use the format: `{agent_id}_{slug}/{filename}.md` (e.g., `A-01_incubation/requirements.md`).
 
 ### TUI Usage
 
@@ -283,4 +284,4 @@ Available commands change based on context. Use `agentic --help` to see what's a
 
 ---
 
-*This documentation covers both CLI and TUI interfaces for the Agentic Workflow OS. Last updated: December 23, 2025*
+*This documentation covers both CLI and TUI interfaces for the Agentic Workflow OS. Last updated: December 15, 2025*

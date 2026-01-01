@@ -5,7 +5,8 @@
     agent_id: current agent ID
     next_agent_id: next agent ID (null for terminal)
     workflow_name: current workflow name
-    required_artifacts: array of artifact filenames for handoff
+    produces: artifacts produced by this agent
+    agent_slug: agent slug for path construction
 -#}
 
 ## CLI Quick Reference
@@ -13,9 +14,6 @@
 ### Session Commands
 
 ```bash
-# Start/resume session
-agentic activate {{ agent_id }}
-
 # Check session status
 agentic status
 ```
@@ -28,17 +26,14 @@ agentic decision --title "Decision Title" --rationale "Why this decision was mad
 
 # Record an assumption
 agentic assumption --assumption "Assumption Title" --rationale "Basis for assumption"
-
-# Record feedback
-agentic feedback --target "A-01" --severity "medium" --summary "Feedback summary"
 ```
 
 ### Handoff Commands
 
 {% if next_agent_id %}
 ```bash
-# Handoff to next agent
-agentic handoff --to {{ next_agent_id }} --artifacts "{{ required_artifacts | join(', ') if required_artifacts else 'artifact1.md, artifact2.md' }}" --notes "Handoff notes"
+# Handoff to next agent (artifacts relative to artifacts/ directory)
+agentic handoff --to {{ next_agent_id }} --artifacts "{{ agent_id}}_{{ agent_slug }}/{{ produces.core[0].filename if produces.core else 'artifact_name.md' }}" --notes "Handoff notes"
 ```
 {% else %}
 ```bash

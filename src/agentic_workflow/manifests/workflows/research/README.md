@@ -12,7 +12,7 @@ python3 -m scripts.cli.workflow init my_research --workflow research --descripti
 
 # Start working
 cd projects/my_research
-./workflow activate R00
+agentic activate R00
 ```
 
 ## Agents
@@ -119,11 +119,11 @@ project/
 ## CLI Commands
 
 ```bash
-./workflow status                # Show current state
-./workflow activate R01          # Switch to agent
-./workflow handoff --from R01 --to R02 --artifacts "research_proposal.md"
-./workflow decision --title "Target venue" --rationale "IEEE format"
-./workflow end                   # Complete session
+agentic status                # Show current state
+agentic activate R01          # Switch to agent
+agentic handoff --to R02 --artifacts "research_proposal.md"
+agentic decision --title "Target venue" --rationale "IEEE format"
+agentic end                   # Complete session
 ```
 
 ## Evidence Standards

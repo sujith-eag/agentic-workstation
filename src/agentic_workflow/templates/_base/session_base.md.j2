@@ -29,7 +29,11 @@ timestamp: {{ timestamp | default('') }}
 cli_commands:
   - "agentic status"
   - "agentic decision --title '...' --rationale '...'"
-  - "agentic handoff --to {{ next_agent_id | default('NEXT') }} --artifacts '...'"
+{% if next_agent_id %}
+  - "agentic handoff --to {{ next_agent_id }} --artifacts '{{ agent_id }}_{{ agent_slug }}/{{ produces.core[0].filename if produces.core else 'artifact_name.md' }}' --notes '...'"
+{% else %}
+  - "agentic end"
+{% endif %}
 ---
 
 # ACTIVE SESSION — {{ agent_id }}
@@ -52,18 +56,7 @@ cli_commands:
 | **CLI Reference** | `docs/CLI_REFERENCE.md` |
 
 {% block cli_quick_ref %}
-### CLI Quick Commands
-
-```bash
-# Check session status
-agentic status
-
-# Log a decision
-agentic decision --title "..." --rationale "..."
-
-# Complete handoff
-agentic handoff --to {{ next_agent_id | default('NEXT') }} --artifacts "file1.md,file2.md"
-```
+{% include '_partials/cli_commands.j2' %}
 {% endblock %}
 
 {% block protocol %}

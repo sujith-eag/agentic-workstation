@@ -254,10 +254,14 @@ def _rebuild_md_from_ledger(yaml_path: Path, md_path: Path):
 
 if __name__ == "__main__":
     # Simple CLI for manual use
-    from agentic_workflow.cli.display import display_error, display_success, display_info
+    from agentic_workflow.cli.display import display_error, display_action_result, display_info
+    from rich.console import Console
+    
+    console = Console()
+    
     if len(sys.argv) < 7:
         display_info("Usage: python3 -m scripts.ledger.log_write")
         sys.exit(1)
     _, project_name, log_file, entry_type, ref_id, summary, status = sys.argv[:7]
     md, yml = write_log(project_name, log_file, entry_type, ref_id, summary, status)
-    display_success(f"Logged to {md} and ledger {yml}")
+    display_action_result(f"Logged to {md} and ledger {yml}", success=True, console=console)

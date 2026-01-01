@@ -21,7 +21,7 @@ cli_commands:
   - "agentic decision --title '...' --rationale '...'"
   - "agentic assumption --assumption '...' --rationale '...'"
 {% if next_agent_id %}
-  - "agentic handoff --to {{ next_agent_id }} --artifacts '{{ required_artifacts | join(', ') if required_artifacts else '...' }}' --notes '...'"
+  - "agentic handoff --to {{ next_agent_id }} --artifacts '{{ agent_id }}_{{ agent_slug }}/{{ produces.core[0].filename if produces.core else 'artifact_name.md' }}' --notes '...'"
 {% else %}
   - "agentic end"
 {% endif %}

@@ -39,7 +39,11 @@ from agentic_workflow.generation.denormalizer import (
 )
 from agentic_workflow.generation.yaml_writer import write_all_yaml
 
-from agentic_workflow.cli.display import display_info, display_error, display_success
+from agentic_workflow.cli.display import display_info, display_error, display_action_result
+from rich.console import Console
+
+# Create console for display functions
+console = Console()
 
 # Output directory
 WORKFLOWS_DIR = Path(__file__).resolve().parents[2] / "manifests" / "workflows"
@@ -215,14 +219,14 @@ def generate_workflow(
         for f in files:
             report.add_file(f)
         for f in files:
-            display_success(f"  Written: {f}")
+            display_action_result(f"Written: {f}", success=True, console=console)
     except Exception as e:
         report.add_error(f"{workflow_id}: Failed to write YAML: {e}")
         display_error(f"Failed to write YAML: {e}")
         return False
     
     report.add_workflow(workflow_id)
-    display_success(f"Completed: {workflow_id}")
+    display_action_result(f"Completed: {workflow_id}", success=True, console=console)
     return True
 
 

@@ -13,7 +13,7 @@ from agentic_workflow.core.exceptions import (
 )
 from agentic_workflow.services import ProjectService, WorkflowService
 from agentic_workflow.session.gate_checker import GateChecker
-from ..display import display_success, display_project_summary, display_action_result, display_info
+from ..display import display_project_summary, display_action_result, display_info
 from rich.console import Console
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,10 @@ class SessionHandlers:
             validate_required(project, "project", "init")
             workflow_type = workflow or 'planning'
             
-            logger.info(f"Initializing project '{project}' with workflow '{workflow_type}'")
+            # logger.info(f"Initializing project '{project}' with workflow '{workflow_type}'")
+            
+            # Display initialization header
+            display_info(f"\nInitializing project '{project}' with workflow '{workflow_type}'", self.console)
 
             # Initialize via Service Layer
             result = self.project_service.init_project(
@@ -50,7 +53,7 @@ class SessionHandlers:
                 force=force
             )
             
-            # UX: Determine first agent for "Next Steps" guidance
+            # Determine first agent for next steps guidance
             first_agent = "A-01"
             try:
                 manifest = self.workflow_service.get_workflow_manifest(workflow_type)
@@ -60,16 +63,28 @@ class SessionHandlers:
             except Exception:
                 pass
 
+            # Build next steps
             next_steps = [
                 f"cd \"{result.target_path}\"",
                 "agentic status", 
                 f"agentic activate {first_agent}"
             ]
 
-            # Display Rich Summary using actual root inventory
-            directories = self._summarize_root_entries(result.target_path)
+            # Build directory summary for display
+            directories = []
+            if result.target_path and result.target_path.exists():
+                for item in result.target_path.iterdir():
+                    if item.name.startswith('.'):
+                        continue
+                    if item.is_dir():
+                        count = sum(1 for _ in item.rglob('*'))
+                        directories.append(f"{item.name}/ ({count} items)")
+                    else:
+                        directories.append(f"{item.name} (file)")
+                directories.sort()
+
+            # Delegate all display to presentation layer
             display_project_summary(project, workflow_type, directories, next_steps, self.console)
-            display_success(f"Project '{project}' initialized successfully", self.console)
 
         except Exception as e:
             handle_error(e, "project initialization", {"project": project})
@@ -157,24 +172,6 @@ class SessionHandlers:
 
         except Exception as e:
             handle_error(e, "session end", {"project": project})
-
-    def _summarize_root_entries(self, root_path: Path) -> List[str]:
-        """Summarize top-level project entries for creation output."""
-        entries: List[str] = []
-        if not root_path or not Path(root_path).exists():
-            return entries
-
-        for item in Path(root_path).iterdir():
-            if item.name.startswith('.'):
-                continue
-            if item.is_dir():
-                count = sum(1 for _ in item.rglob('*'))
-                entries.append(f"{item.name}/ ({count} items)")
-            else:
-                entries.append(f"{item.name} (file)")
-
-        entries.sort()
-        return entries
 
 
 __all__ = ["SessionHandlers"]

@@ -4,6 +4,7 @@ Input handling for the Agentic Workflow OS TUI.
 This module provides consistent input handling with proper exit logic.
 """
 
+import logging
 from enum import Enum
 from typing import List, Optional, Union
 import questionary
@@ -11,6 +12,8 @@ from questionary import Choice
 from rich.console import Console
 
 from agentic_workflow.cli.theme import Theme
+
+logger = logging.getLogger(__name__)
 
 
 class InputResult(Enum):
@@ -63,13 +66,19 @@ class InputHandler:
 
         except KeyboardInterrupt:
             return InputResult.EXIT
-        except Exception as e:
+        except (EOFError, questionary.ValidationError) as e:
+            logger.debug(f"Input cancelled or validation failed: {e}")
             if self.feedback:
                 self.feedback.error(f"Input error: {e}")
             else:
                 from rich.text import Text
                 self.console.print(Text(f"Input error: {e}", style=Theme.ERROR))
             return InputResult.EXIT
+        except Exception as e:
+            logger.exception(f"Unexpected error in get_selection: {e}")
+            if self.feedback:
+                self.feedback.error(f"Unexpected input error: {e}")
+            raise
 
     def get_text(
         self,
@@ -101,13 +110,19 @@ class InputHandler:
 
         except KeyboardInterrupt:
             return InputResult.EXIT
-        except Exception as e:
+        except (EOFError, questionary.ValidationError) as e:
+            logger.debug(f"Text input cancelled or validation failed: {e}")
             if self.feedback:
                 self.feedback.error(f"Input error: {e}")
             else:
                 from rich.text import Text
                 self.console.print(Text(f"Input error: {e}", style=Theme.ERROR))
             return InputResult.EXIT
+        except Exception as e:
+            logger.exception(f"Unexpected error in get_text: {e}")
+            if self.feedback:
+                self.feedback.error(f"Unexpected input error: {e}")
+            raise
 
     def wait_for_user(self, message: Optional[str] = "Press Enter to continue...", *, show_message: bool = True) -> InputResult:
         """Wait for user to press Enter with exit sentinel support.
@@ -146,13 +161,19 @@ class InputHandler:
 
         except KeyboardInterrupt:
             return InputResult.EXIT
-        except Exception as e:
+        except (EOFError, questionary.ValidationError) as e:
+            logger.debug(f"Confirmation cancelled or validation failed: {e}")
             if self.feedback:
                 self.feedback.error(f"Input error: {e}")
             else:
                 from rich.text import Text
                 self.console.print(Text(f"Input error: {e}", style=Theme.ERROR))
             return InputResult.EXIT
+        except Exception as e:
+            logger.exception(f"Unexpected error in get_confirmation: {e}")
+            if self.feedback:
+                self.feedback.error(f"Unexpected input error: {e}")
+            raise
 
 
 __all__ = ["InputHandler", "InputResult"]

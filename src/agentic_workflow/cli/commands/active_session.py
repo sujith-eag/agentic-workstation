@@ -3,34 +3,36 @@ Active Session Commands
 Focus: The 'Doing' commands (Activate, Handoff, Decision, End).
 """
 import click
+from typing import Optional
 from rich_click import RichCommand
 from ..handlers.session_handlers import SessionHandlers
 from ..handlers.entry_handlers import EntryHandlers
-from ..display import display_error
+from ..display import exit_with_error
 from agentic_workflow.services import LedgerService
-from rich.console import Console
-
-# Initialize Handlers
-console = Console()
-session_handlers = SessionHandlers(console)
-entry_handlers = EntryHandlers(console)
 
 @click.command(cls=RichCommand)
 @click.argument('agent_id')
 @click.pass_context
 def activate(ctx: click.Context, agent_id: str):
-    """Activate an agent session."""
+    """Activate an agent session to begin work.
+    
+    Starts a new agent session, advancing the workflow stage if needed.
+    Checks gate conditions before activation to ensure prerequisites are met.
+    
+    \b
+    Examples:
+      $ agentic activate A-01
+      $ agentic activate researcher
+    """
     # Context-aware config injection (if available)
+    console = ctx.obj.get('console')
     config = ctx.obj.get('config') if ctx.obj else None
+    session_handlers = SessionHandlers(console, config)
     
     try:
-        # Pass config implicitly if needed, but handler mainly uses kwargs
-        if config:
-            session_handlers.config = config
-            
         session_handlers.handle_activate(agent_id=agent_id)
     except Exception as e:
-        display_error(f"Activation failed: {e}", console)
+        exit_with_error(f"Activation failed: {e}", console)
 
 @click.command(cls=RichCommand)
 @click.option('--to', required=True, help='Target agent ID')
@@ -38,10 +40,21 @@ def activate(ctx: click.Context, agent_id: str):
 @click.option('--artifacts', help='Comma-separated artifact names')
 @click.option('--notes', help='Handoff notes')
 @click.pass_context
-def handoff(ctx: click.Context, to: str, from_agent: str, artifacts: str, notes: str):
-    """Record a handoff to another agent."""
+def handoff(ctx: click.Context, to: str, from_agent: str, artifacts: Optional[str] = None, notes: Optional[str] = None):
+    """Record a handoff to transfer work between agents.
+    
+    Validates the handoff against workflow rules before recording.
+    Auto-detects the source agent from the active session if not specified.
+    
+    \b
+    Examples:
+      $ agentic handoff --to A-02
+      $ agentic handoff --from A-01 --to A-02 --artifacts "spec.md,diagram.png"
+    """
+    console = ctx.obj.get('console')
     config = ctx.obj.get('config')
     project_name = config.project.root_path.name if config and config.is_project_context else None
+    entry_handlers = EntryHandlers(console)
     
     # Auto-detect 'from_agent' if not supplied
     if not from_agent and project_name:
@@ -64,17 +77,27 @@ def handoff(ctx: click.Context, to: str, from_agent: str, artifacts: str, notes:
             notes=notes
         )
     except Exception as e:
-        display_error(f"Handoff failed: {e}", console)
+        exit_with_error(f"Handoff failed: {e}", console)
 
-@click.command(cls=RichCommand, help="Record a key project decision.")
+@click.command(cls=RichCommand)
 @click.option('--title', required=True, help='Decision title')
 @click.option('--rationale', required=True, help='Reasoning behind the decision')
 @click.option('--agent', help='Agent ID making the decision')
 @click.pass_context
-def decision(ctx: click.Context, title: str, rationale: str, agent: str):
-    """Record a key project decision with title, rationale, and optional agent ID."""
+def decision(ctx: click.Context, title: str, rationale: str, agent: Optional[str] = None):
+    """Record a key architectural or design decision.
+    
+    Documents important project decisions with title and rationale.
+    Creates an audit trail for future reference.
+    
+    \b
+    Examples:
+      $ agentic decision --title "Use PostgreSQL" --rationale "Need ACID compliance"
+    """
+    console = ctx.obj.get('console')
     config = ctx.obj.get('config')
     project_name = config.project.root_path.name if config and config.is_project_context else None
+    entry_handlers = EntryHandlers(console)
 
     try:
         entry_handlers.handle_decision(
@@ -84,26 +107,41 @@ def decision(ctx: click.Context, title: str, rationale: str, agent: str):
             agent=agent
         )
     except Exception as e:
-        display_error(f"Decision recording failed: {e}", console)
+        exit_with_error(f"Decision recording failed: {e}", console)
 
-@click.command(cls=RichCommand, name='end', help="Archive the current session and reset state.")
+@click.command(cls=RichCommand, name='end')
 @click.pass_context
 def end_session(ctx: click.Context):
-    """End the current active session."""
+    """End the current session and archive state.
+    
+    Closes the active agent session, archives session data,
+    and resets the project to an idle state.
+    """
+    console = ctx.obj.get('console')
     config = ctx.obj.get('config')
     project_name = config.project.root_path.name if config and config.is_project_context else None
+    session_handlers = SessionHandlers(console, config)
     
     try:
         session_handlers.handle_end(project=project_name)
     except Exception as e:
-        display_error(f"Failed to end session: {e}", console)
+        exit_with_error(f"Failed to end session: {e}", console)
 
 @click.command(cls=RichCommand, name='check-handoff')
 @click.argument('agent_id')
 @click.pass_context
 def check_handoff(ctx: click.Context, agent_id: str):
-    """Check if a handoff exists for an agent."""
+    """Check if a handoff exists for a specific agent.
+    
+    Verifies whether there are any pending handoffs directed
+    to the specified agent ID.
+    
+    \b
+    Examples:
+      $ agentic check-handoff A-02
+    """
     from ..handlers.query_handlers import QueryHandlers
+    console = ctx.obj.get('console')
     query_handlers = QueryHandlers(console)
     config = ctx.obj.get('config')
     project_name = config.project.root_path.name if config and config.is_project_context else None
@@ -111,7 +149,7 @@ def check_handoff(ctx: click.Context, agent_id: str):
     try:
         query_handlers.handle_check_handoff(project=project_name, agent_id=agent_id)
     except Exception as e:
-        display_error(f"Handoff check failed: {e}", console)
+        exit_with_error(f"Handoff check failed: {e}", console)
 
 @click.command(cls=RichCommand)
 @click.option('--target', required=True, help='Feedback target')
@@ -119,9 +157,19 @@ def check_handoff(ctx: click.Context, agent_id: str):
 @click.option('--summary', required=True, help='Feedback summary')
 @click.pass_context
 def feedback(ctx: click.Context, target: str, severity: str, summary: str):
-    """Record feedback for an agent or artifact."""
+    """Record feedback on an agent, artifact, or process.
+    
+    Captures structured feedback with severity levels for tracking
+    quality issues and improvement opportunities.
+    
+    \b
+    Examples:
+      $ agentic feedback --target A-01 --severity high --summary "Missing error handling"
+    """
+    console = ctx.obj.get('console')
     config = ctx.obj.get('config')
     project_name = config.project.root_path.name if config and config.is_project_context else None
+    entry_handlers = EntryHandlers(console)
     
     try:
         entry_handlers.handle_feedback(
@@ -131,17 +179,28 @@ def feedback(ctx: click.Context, target: str, severity: str, summary: str):
             summary=summary
         )
     except Exception as e:
-        display_error(f"Feedback recording failed: {e}", console)
+        exit_with_error(f"Feedback recording failed: {e}", console)
 
 @click.command(cls=RichCommand)
 @click.option('--title', required=True, help='Blocker title')
 @click.option('--description', required=True, help='Blocker description')
 @click.option('--blocked-agents', help='Comma-separated list of blocked agent IDs')
 @click.pass_context
-def blocker(ctx: click.Context, title: str, description: str, blocked_agents: str):
-    """Record a blocker that prevents progress."""
+def blocker(ctx: click.Context, title: str, description: str, blocked_agents: Optional[str] = None):
+    """Record a blocker that prevents progress.
+    
+    Documents issues blocking one or more agents from proceeding.
+    Tracks which agents are affected for workflow visibility.
+    
+    \b
+    Examples:
+      $ agentic blocker --title "API down" --description "Cannot access external API"
+      $ agentic blocker --title "Missing spec" --description "Requirements unclear" --blocked-agents "A-02,A-03"
+    """
+    console = ctx.obj.get('console')
     config = ctx.obj.get('config')
     project_name = config.project.root_path.name if config and config.is_project_context else None
+    entry_handlers = EntryHandlers(console)
     
     # Parse blocked_agents if provided
     blocked_agents_list = None
@@ -156,7 +215,7 @@ def blocker(ctx: click.Context, title: str, description: str, blocked_agents: st
             blocked_agents=blocked_agents_list
         )
     except Exception as e:
-        display_error(f"Blocker recording failed: {e}", console)
+        exit_with_error(f"Blocker recording failed: {e}", console)
 
 @click.command(cls=RichCommand)
 @click.option('--trigger', required=True, help='What triggered the iteration')
@@ -165,9 +224,19 @@ def blocker(ctx: click.Context, title: str, description: str, blocked_agents: st
 @click.option('--version-bump', type=click.Choice(['patch', 'minor', 'major']), default='patch', help='Version bump type')
 @click.pass_context
 def iteration(ctx: click.Context, trigger: str, impacted_agents: str, description: str, version_bump: str):
-    """Record an iteration in the development process."""
+    """Record a development iteration or major change.
+    
+    Tracks significant changes that require rework across agents.
+    Automatically increments version based on the severity of change.
+    
+    \b
+    Examples:
+      $ agentic iteration --trigger "Requirements change" --impacted-agents "A-01,A-02" --description "Added authentication" --version-bump minor
+    """
+    console = ctx.obj.get('console')
     config = ctx.obj.get('config')
     project_name = config.project.root_path.name if config and config.is_project_context else None
+    entry_handlers = EntryHandlers(console)
     
     # Parse impacted_agents
     impacted_agents_list = [agent.strip() for agent in impacted_agents.split(',')]
@@ -181,16 +250,26 @@ def iteration(ctx: click.Context, trigger: str, impacted_agents: str, descriptio
             version_bump=version_bump
         )
     except Exception as e:
-        display_error(f"Iteration recording failed: {e}", console)
+        exit_with_error(f"Iteration recording failed: {e}", console)
 
 @click.command(cls=RichCommand)
 @click.option('--assumption', required=True, help='The assumption text')
 @click.option('--rationale', required=True, help='Rationale for the assumption')
 @click.pass_context
 def assumption(ctx: click.Context, assumption: str, rationale: str):
-    """Record an assumption that may affect the project."""
+    """Record an assumption that may affect the project.
+    
+    Documents assumptions made during development that could
+    impact future work if they prove incorrect.
+    
+    \b
+    Examples:
+      $ agentic assumption --assumption "Users have reliable internet" --rationale "Product is cloud-only"
+    """
+    console = ctx.obj.get('console')
     config = ctx.obj.get('config')
     project_name = config.project.root_path.name if config and config.is_project_context else None
+    entry_handlers = EntryHandlers(console)
     
     try:
         entry_handlers.handle_assumption(
@@ -199,7 +278,7 @@ def assumption(ctx: click.Context, assumption: str, rationale: str):
             rationale=rationale
         )
     except Exception as e:
-        display_error(f"Assumption recording failed: {e}", console)
+        exit_with_error(f"Assumption recording failed: {e}", console)
 
 
 __all__ = [

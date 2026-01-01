@@ -242,6 +242,9 @@ class InitPipeline:
         # Create project directories
         self._create_project_directories(project_model)
         
+        # Log progress (UI display happens at handler layer)
+        logger.info(f"{mode_str.upper()} MODE: Writing {len(vfs)} files")
+        
         # Then, write all virtual files
         for vf in vfs:
             ensure_directory(vf.path.parent)
@@ -540,9 +543,9 @@ The project has been initialized and is ready for the first agent activation.
 
 1. **Activate the first agent:**
    ```bash
-   ./workflow activate A-01  # For planning workflow
+   agentic activate A-01  # For planning workflow
    # OR
-   ./workflow activate I-01  # For implementation workflow
+   agentic activate I-01  # For implementation workflow
    ```
 
 2. **Review project context** in `project_index.md`

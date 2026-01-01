@@ -7,7 +7,7 @@ import logging
 from ...core.exceptions import CLIExecutionError, handle_error, validate_required
 from ...session.stage_manager import set_stage
 from ...session.gate_checker import GateChecker
-from ..display import display_action_result, display_success, display_error
+from ..display import display_action_result, display_error
 from rich.console import Console
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,12 @@ class WorkflowHandlers:
             result = set_stage(project, stage)
             
             if result['success']:
-                display_success(f"Stage changed: {result.get('previous', 'None')} → {result['current']}", self.console)
+                display_action_result(
+                    action=f"Stage changed: {result.get('previous', 'None')} → {result['current']}",
+                    success=True,
+                    console=self.console,
+                    details=[f"Project: {project}"]
+                )
             else:
                 display_error(f"Failed to set stage: {result['error']}", self.console)
 
@@ -71,7 +76,11 @@ class WorkflowHandlers:
             result = gate_checker.check_gate(project, None)
             
             if result.passed:
-                display_success(f"Gate check passed for project '{project}'", self.console)
+                display_action_result(
+                    action=f"Gate check passed for project '{project}'",
+                    success=True,
+                    console=self.console
+                )
             else:
                 # Display violations
                 violation_messages = []
